@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Club Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/date-fns@2.29.3/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body id="mainBody" dir="ltr" class="overflow-x-hidden w-full max-w-full">
+    <div class="flex justify-end items-center p-4">
+        <button id="langToggleBtn" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold transition">עברית</button>
+    </div>
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex flex-wrap items-center">
+                    <h1 class="text-xl font-bold text-gray-900">
+                        <i class="fas fa-dumbbell text-blue-600 mr-2"></i>
+                        Sports Club Management
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="darkModeToggle" class="p-2 rounded-lg hover:bg-gray-100">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <a href="/logout" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold transition">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Navigation Tabs -->
+        <div class="flex flex-wrap gap-1 mb-6 bg-gray-100 p-1 sm:p-2 rounded-lg">
+            <button class="nav-tab active" data-tab="home" data-i18n="Calendar">
+                <i class="fas fa-calendar mr-2 text-lg text-blue-500"></i>Calendar
+            </button>
+            <button class="nav-tab" data-tab="courses" data-i18n="Courses">
+                <i class="fas fa-dumbbell mr-2 text-lg text-blue-500"></i>Courses
+            </button>
+            <button class="nav-tab" data-tab="students" data-i18n="Students">
+                <i class="fas fa-users mr-2 text-lg text-blue-500"></i>Students
+            </button>
+            <button class="nav-tab" data-tab="payments" data-i18n="Payments">
+                <i class="fas fa-credit-card mr-2 text-lg text-blue-500"></i>Payments
+            </button>
+            <button class="nav-tab" data-tab="analysis" data-i18n="Analysis">
+                <i class="fas fa-chart-bar mr-2 text-lg text-blue-500"></i>Analysis
+            </button>
+            <button class="nav-tab" data-tab="other" data-i18n="Other">
+                <i class="fas fa-chart-bar mr-2 text-lg text-blue-500"></i>Other
+            </button>
+        </div>
+
+        <!-- Home Tab - Calendar View -->
+        <div id="home" class="tab-content active">
+            <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl shadow-md p-8 mb-8">
+                <div class="flex items-center mb-6 gap-3">
+                  <i class="fas fa-calendar text-3xl text-blue-500"></i>
+                  <h2 id="calendarTitle" class="text-3xl font-extrabold text-gray-900 tracking-tight" data-i18n="Weekly Calendar">Weekly Calendar</h2>
+                </div>
+                <div class="flex flex-row items-center justify-between mb-6 w-full">
+                    <span id="calendarMonthYear" class="text-lg font-semibold text-gray-700"></span>
+                    <div id="calendarNav" class="flex items-center gap-2">
+                      <button id="prevWeek" class="btn btn-primary rounded-lg px-4 py-2 text-lg font-semibold shadow hover:shadow-lg transition" aria-label="Previous week">
+                        <i class="fas fa-chevron-left"></i>
+                      </button>
+                      <button id="nextWeek" class="btn btn-primary rounded-lg px-4 py-2 text-lg font-semibold shadow hover:shadow-lg transition" aria-label="Next week">
+                        <i class="fas fa-chevron-right"></i>
+                      </button>
+                      <button id="today" class="btn btn-primary rounded-lg px-4 py-2 text-lg font-semibold shadow hover:shadow-lg transition" data-i18n="Today">Today</button>
+                      <select id="calendarViewSelect" class="btn btn-primary rounded-lg px-4 py-2 text-lg font-semibold shadow hover:shadow-lg transition">
+                        <option value="week" data-i18n="Week">Week</option>
+                        <option value="day" data-i18n="Day">Day</option>
+                      </select>
+                    </div>
+                </div>
+                <h2 id="calendarMonthHeader" class="text-3xl mb-4"></h2>
+                <div class="overflow-x-auto w-full">
+                  <div id="calendarContainer" class="bg-white rounded-xl shadow p-4 border border-gray-100 min-w-[700px] sm:min-w-[900px] lg:min-w-full">
+                      <!-- Calendar will be generated here -->
+                  </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Courses Tab -->
+        <div id="courses" class="tab-content">
+            <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl shadow-md p-8 mb-8">
+              <div class="flex items-center mb-6 gap-3">
+                <i class="fas fa-dumbbell text-3xl text-blue-500"></i>
+                <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight" data-i18n="Courses">Courses</h2>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
+                <div class="bg-white rounded-xl shadow hover:shadow-lg transition p-6 flex flex-col items-start border-t-4 border-blue-400">
+                  <span class="text-xs font-semibold text-blue-600 uppercase mb-1" data-i18n="Running Courses">Running Courses</span>
+                  <span id="summaryRunningCourses" class="text-3xl font-bold text-blue-900">0</span>
+                </div>
+
+                <div class="bg-white rounded-xl shadow hover:shadow-lg transition p-6 flex flex-col items-start border-t-4 border-green-400">
+                  <span class="text-xs font-semibold text-green-600 uppercase mb-1" data-i18n="Total Students">Total Students</span>
+                  <span id="summaryTotalStudents" class="text-3xl font-bold text-green-900">0</span>
+                </div>
+
+                <div class="bg-white rounded-xl shadow hover:shadow-lg transition p-6 flex flex-col items-start border-t-4 border-yellow-400">
+                  <span class="text-xs font-semibold text-yellow-600 uppercase mb-1" data-i18n="Total Enrollments">Total Enrollments</span>
+                  <span id="summaryTotalEnrollments" class="text-3xl font-bold text-yellow-900">0</span>
+                </div>
+
+                <div class="bg-white rounded-xl shadow hover:shadow-lg transition p-6 flex flex-col items-start border-t-4 border-purple-400">
+                  <span class="text-xs font-semibold text-purple-600 uppercase mb-1" data-i18n="Unique Coaches">Unique Coaches</span>
+                  <span id="summaryUniqueCoaches" class="text-3xl font-bold text-purple-900">0</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4 mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-gray-100">
+                <div class="relative w-full md:max-w-md">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fas fa-search"></i></span>
+                    <input type="text" id="courseSearch" class="form-input w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-400" data-i18n-placeholder="Search courses by name or teacher..." placeholder="Search courses by name or teacher...">
+                </div>
+                <button id="addCourseBtn" class="btn btn-primary rounded-lg px-6 py-2 text-lg font-semibold shadow hover:shadow-lg transition w-full md:w-auto" data-i18n="Add Course">
+                    <i class="fas fa-plus mr-2"></i>Add Course
+                </button>
+            </div>
+            <div class="overflow-x-auto w-full">
+              <div id="coursesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 min-w-[700px]">
+                  <!-- Courses will be loaded here -->
+              </div>
+            </div>
+        </div>
+
+        <!-- Students Tab -->
+        <div id="students" class="tab-content">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900" data-i18n="Students">Students Management</h2>
+                    <button id="addStudentBtn" class="btn btn-primary" data-i18n="Add Student">
+                        <i class="fas fa-plus mr-2"></i>Add Student
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <input type="text" id="studentSearch" class="form-input w-full max-w-md" data-i18n-placeholder="Search students..." placeholder="Search students...">
+                </div>
+
+                <div class="overflow-x-auto w-full">
+                    <div id="studentsList" class="min-w-[700px]">
+                        <!-- Students will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments Tab -->
+        <div id="payments" class="tab-content">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900" data-i18n="Payments">Payments Management</h2>
+                    <button id="addPaymentBtn" class="btn btn-primary" data-i18n="Add Payment">
+                        <i class="fas fa-plus mr-2"></i>Add Payment
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <input type="text" id="paymentSearch" class="form-input w-full max-w-md" data-i18n-placeholder="Search payments..." placeholder="Search payments...">
+                </div>
+
+                <div class="overflow-x-auto w-full">
+                    <div id="paymentsList" class="min-w-[700px]">
+                        <!-- Payments will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Tab -->
+        <div id="analysis" class="tab-content">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900" data-i18n="Analysis">Financial Analysis</h2>
+                        <p class="text-sm text-gray-600 mt-1" data-i18n="Export Description">Export payment data to Excel for detailed analysis and reporting</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <select id="analysisPeriod" class="form-select">
+                            <option value="month" data-i18n="This Month">This Month</option>
+                            <option value="quarter" data-i18n="This Quarter">This Quarter</option>
+                            <option value="year" data-i18n="This Year">This Year</option>
+                            <option value="all" data-i18n="All Time">All Time</option>
+                        </select>
+                        <button id="refreshAnalysis" class="btn btn-secondary" data-i18n="Refresh">
+                            <i class="fas fa-sync-alt mr-2"></i>Refresh
+                        </button>
+                        <button id="exportPayments" class="btn btn-success" data-i18n="Export Payments" title="Export all payments to Excel file">
+                            <i class="fas fa-file-excel mr-2"></i>Export Payments
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-[700px]">
+                        <!-- Coach Income Chart -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold mb-4" data-i18n="Coach Income">Coach Income</h3>
+                            <div class="chart-container">
+                                <canvas id="coachIncomeChart" width="400" height="300" style="width:100%;height:300px"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Course Income Chart -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold mb-4" data-i18n="Course Income">Course Income</h3>
+                            <div class="chart-container">
+                                <canvas id="courseIncomeChart" width="400" height="300" style="width:100%;height:300px"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 overflow-x-auto">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-[700px]">
+                        <!-- Summary Cards -->
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-blue-600" data-i18n="Total Revenue">Total Revenue (₪)</h4>
+                            <p id="totalRevenue" class="text-2xl font-bold text-blue-900">₪0</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-green-600" data-i18n="Total Payments">Total Payments</h4>
+                            <p id="totalPayments" class="text-2xl font-bold text-green-900">0</p>
+                        </div>
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-purple-600" data-i18n="Average Payment">Average Payment (₪)</h4>
+                            <p id="averagePayment" class="text-2xl font-bold text-purple-900">₪0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Modal -->
+    <div id="courseModal" class="modal hidden">
+        <div class="modal-content max-w-full sm:max-w-xl w-full px-4 sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="courseModalTitle" class="text-xl font-bold"></h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <div class="mb-4">
+                <p><strong>Coach:</strong> <span id="courseModalCoach"></span></p>
+                <p><strong>Time:</strong> <span id="courseModalTime"></span></p>
+            </div>
+
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-semibold">Enrolled Students</h4>
+                    <button id="addStudentToCourseBtn" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus mr-1"></i>Add Student
+                    </button>
+                </div>
+                <input type="text" id="studentSearchInCourse" class="form-input mb-2" data-i18n-placeholder="Search students..." placeholder="Search students...">
+                <div id="courseStudentsList" class="max-h-60 overflow-y-auto">
+                    <!-- Students in course will be listed here -->
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <button id="sendWhatsAppBtn" class="btn btn-success w-full">
+                    <i class="fab fa-whatsapp mr-2"></i>Send WhatsApp Message to All Students
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Course Modal -->
+    <div id="addCourseModal" class="modal hidden">
+        <div class="modal-content w-full max-w-full px-4 sm:max-w-xl sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" data-i18n="Add Course">Add New Course</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <form id="addCourseForm">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Course Name">Course Name</label>
+                    <input type="text" id="courseName" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Teacher">Coach Name</label>
+                    <input type="text" id="courseTeacher" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Start Date">Start Date</label>
+                    <input type="date" id="courseStartDate" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Time">Time</label>
+                    <input type="time" id="courseTime" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Duration (minutes)">Duration (minutes)</label>
+                    <input type="number" id="courseDuration" class="form-input" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Sessions Count">Number of Sessions</label>
+                    <input type="number" id="courseSessionsCount" class="form-input" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Weekdays">Weekdays</label>
+                    <div class="space-y-2 overflow-x-auto">
+                        <div class="weekday-checkbox">
+                            <input type="checkbox" id="weekday0" value="0" class="mr-2">
+                            <label for="weekday0" data-i18n="Sunday">Sunday</label>
+                        </div>
+                        <div class="weekday-checkbox">
+                            <input type="checkbox" id="weekday1" value="1" class="mr-2">
+                            <label for="weekday1" data-i18n="Monday">Monday</label>
+                        </div>
+                        <div class="weekday-checkbox">
+                            <input type="checkbox" id="weekday2" value="2" class="mr-2">
+                            <label for="weekday2" data-i18n="Tuesday">Tuesday</label>
+                        </div>
+                        <div class="weekday-checkbox">
+                            <input type="checkbox" id="weekday3" value="3" class="mr-2">
+                            <label for="weekday3" data-i18n="Wednesday">Wednesday</label>
+                        </div>
+                        <div class="weekday-checkbox">
+                            <input type="checkbox" id="weekday4" value="4" class="mr-2">
+                            <label for="weekday4" data-i18n="Thursday">Thursday</label>
+                        </div>
+                        <div class="weekday-checkbox">
+                            <input type="checkbox" id="weekday5" value="5" class="mr-2">
+                            <label for="weekday5" data-i18n="Friday">Friday</label>
+                        </div>
+                        <div class="weekday-checkbox">
+                            <input type="checkbox" id="weekday6" value="6" class="mr-2">
+                            <label for="weekday6" data-i18n="Saturday">Saturday</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Calendar Color">Calendar Color</label>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <label class="flex items-center">
+                            <input type="radio" name="courseColor" id="courseColor1" value="#3B82F6" checked class="mr-2">
+                            <span class="w-6 h-6 rounded-full inline-block" style="background:#3B82F6;"></span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="courseColor" id="courseColor2" value="#F59E42" class="mr-2">
+                            <span class="w-6 h-6 rounded-full inline-block" style="background:#F59E42;"></span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="courseColor" id="courseColor3" value="#10B981" class="mr-2">
+                            <span class="w-6 h-6 rounded-full inline-block" style="background:#10B981;"></span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="courseColor" id="courseColor4" value="#EF4444" class="mr-2">
+                            <span class="w-6 h-6 rounded-full inline-block" style="background:#EF4444;"></span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="courseColor" id="courseColor5" value="#A78BFA" class="mr-2">
+                            <span class="w-6 h-6 rounded-full inline-block" style="background:#A78BFA;"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                  <button type="submit" class="btn btn-primary flex-1" data-i18n="Create Course">
+                    Create Course
+                  </button>
+                  <button type="button" class="btn btn-danger flex-1 close-modal" data-i18n="Cancel">
+                    Cancel
+                  </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="addStudentModal" class="modal hidden">
+        <div class="modal-content w-full max-w-full px-4 sm:max-w-md sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" data-i18n="Add Student">Add New Student</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <form id="addStudentForm">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Student Name">First Name</label>
+                    <input type="text" id="studentFirstName" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Father's Name">Father's Name</label>
+                    <input type="text" id="studentFathersName" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Phone">Phone Number</label>
+                    <input type="tel" id="studentPhone" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Date of Birth">Date of Birth</label>
+                    <input type="date" id="studentDateOfBirth" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentNationalId" class="form-label" data-i18n="National ID (optional)">National ID (optional)</label>
+                    <input type="text" id="studentNationalId" class="form-input">
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary flex-1" data-i18n="Add Student">
+                        Add Student
+                    </button>
+                    <button type="button" class="btn btn-danger flex-1 close-modal" data-i18n="Cancel">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Payment Modal -->
+    <div id="addPaymentModal" class="modal hidden">
+        <div class="modal-content w-full max-w-full px-4 sm:max-w-md sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" data-i18n="Add Payment">Add New Payment</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <form id="addPaymentFormMain">
+                    <div class="form-group relative">
+                        <label class="form-label" data-i18n="Participant">Participant</label>
+                        <input type="text" id="paymentStudentInput" class="form-input" autocomplete="off" placeholder="Type to search...">
+                        <div id="paymentStudentDropdown" class="absolute left-0 z-50 bg-white border border-gray-200 rounded shadow mt-1 w-full hidden"></div>
+                    </div>
+
+                    <div class="form-group relative">
+                        <label class="form-label" data-i18n="Course">Course</label>
+                        <input type="text" id="paymentCourseInput" class="form-input" autocomplete="off" placeholder="Type to search...">
+                        <div id="paymentCourseDropdown" class="absolute left-0 z-50 bg-white border border-gray-200 rounded shadow mt-1 w-full hidden"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="Month">Month of Payment</label>
+                        <input type="month" id="paymentMonth" class="form-input" required placeholder="YYYY-MM" list="monthOptions">
+                        <datalist id="monthOptions">
+                            <!-- Last 12 months will be populated by JS if needed -->
+                        </datalist>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="form-group">
+                      <label for="paymentMethod" class="form-label" data-i18n="Payment Method">Payment Method</label>
+                      <select id="paymentMethod" name="payment_method" class="form-input">
+                        <option value="" disabled selected data-i18n="Select method...">Select method...</option>
+                        <option value="cash"     data-i18n="Cash">Cash</option>
+                        <option value="check"    data-i18n="Check">Check</option>
+                        <option value="transfer" data-i18n="Transfer">Transfer</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="Amount">Amount</label>
+                        <input type="number" id="paymentAmount" class="form-input" min="0" step="0.01" required>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary flex-1">Add Payment</button>
+                        <button type="button" class="btn btn-danger flex-1 close-modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Profile Modal -->
+    <div id="studentProfileModal" class="modal hidden">
+        <div class="modal-content w-full max-w-full px-4 sm:max-w-lg sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="studentProfileTitle" class="text-xl font-bold"></h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <div id="studentProfileContent">
+                    <!-- Student profile content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp Message Modal -->
+    <div id="whatsappModal" class="modal hidden">
+        <div class="modal-content w-full max-w-full px-4 sm:max-w-md sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" data-i18n="Send WhatsApp Message">Send WhatsApp Message</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" data-i18n="Message">Message</label>
+                <textarea id="whatsappMessage" class="form-input" rows="4" data-i18n-placeholder="Enter your message here..." placeholder="Enter your message here..."></textarea>
+            </div>
+            
+            <div class="flex flex-wrap gap-2">
+                <button id="sendWhatsAppMessageBtn" class="btn btn-success flex-1" data-i18n="Send Message">
+                    <i class="fab fa-whatsapp mr-2"></i>Send Message
+                </button>
+                <button class="btn btn-danger flex-1 close-modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Detail Modal -->
+    <div id="eventDetailModal" class="modal hidden" onclick="if(event.target === this) closeEventModal()">
+        <div id="eventDetailModalContent" class="modal-content w-full max-w-md px-4 sm:px-6 mx-auto"></div>
+    </div>
+
+    <!-- Edit Course Modal -->
+    <div id="editCourseModal" class="modal hidden">
+        <div class="modal-content w-full max-w-full px-4 sm:max-w-lg sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Edit Course</h3>
+                <button onclick="closeEditCourseModal()" class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form onsubmit="event.preventDefault(); saveCourseEdits();">
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Name</label>
+                    <input id="editCourseName" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Teacher</label>
+                    <input id="editCourseTeacher" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Time</label>
+                    <input id="editCourseTime" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Sessions Count</label>
+                    <input id="editCourseSessions" type="number" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Weekdays (comma separated, 0=Sun)</label>
+                    <input id="editCourseWeekdays" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Color</label>
+                    <input id="editCourseColor" class="form-input w-full" required />
+                </div>
+                <div class="flex flex-wrap justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeEditCourseModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Student Modal -->
+    <div id="editStudentModal" class="modal hidden">
+        <div class="modal-content w-full max-w-full px-4 sm:max-w-md sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Edit Student</h3>
+                <button onclick="closeEditStudentModal()" class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form onsubmit="event.preventDefault(); saveStudentEdits();">
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">First Name</label>
+                    <input id="editStudentFirstName" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Father's Name</label>
+                    <input id="editStudentFathersName" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Phone</label>
+                    <input id="editStudentPhone" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                    <label class="block font-semibold mb-1">Date of Birth</label>
+                    <input id="editStudentDOB" type="date" class="form-input w-full" required />
+                </div>
+                <div class="mb-2">
+                  <label for="editStudentNationalId" class="block font-semibold mb-1">National ID (optional)</label>
+                  <input
+                    id="editStudentNationalId"
+                    name="national_id"
+                    type="text"
+                    class="form-input w-full"
+                    placeholder="Leave empty if none"
+                  />
+                </div>
+                <div class="flex flex-wrap justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeEditStudentModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html> 

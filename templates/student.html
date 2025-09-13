@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 overflow-x-hidden">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b mb-8">
+        <div class="w-full max-w-4xl mx-auto px-4">
+            <div class="flex justify-between h-16 items-center">
+                <a href="/" class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center">
+                    <i class="fas fa-dumbbell text-blue-600 mr-2"></i>
+                    Sports Club Management
+                </a>
+            </div>
+        </div>
+    </nav>
+    <div class="w-full max-w-4xl mx-auto px-4">
+        <a href="/" class="inline-flex items-center btn btn-secondary bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded">
+            <i class="fas fa-arrow-left mr-2"></i>Back
+        </a>
+    </div>
+    <div class="w-full max-w-4xl mx-auto px-4">
+        <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+                <h1 class="text-2xl font-bold text-gray-900">Student Profile</h1>
+                <button type="button" class="btn btn-primary bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" id="edit-btn" onclick="enableEdit()"><i class="fas fa-edit mr-2"></i>Edit</button>
+                <div id="edit-actions" class="hidden flex space-x-2">
+                    <button type="submit" form="edit-student-form" class="btn btn-success bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"><i class="fas fa-save mr-2"></i>Save</button>
+                    <button type="button" class="btn btn-danger bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onclick="cancelEdit()">Cancel</button>
+                </div>
+            </div>
+            <form method="POST" action="/api/students/{{ student.id }}" id="edit-student-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <div class="mb-4">
+                        <label class="block font-semibold mb-1">First Name</label>
+                        <input class="form-input w-full edit-field" name="first_name" value="{{ student.first_name }}" readonly required />
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-semibold mb-1">Father's Name</label>
+                        <input class="form-input w-full edit-field" name="fathers_name" value="{{ student.fathers_name }}" readonly required />
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-semibold mb-1">Phone</label>
+                        <input class="form-input w-full edit-field" name="phone" value="{{ student.phone }}" readonly required />
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-4">
+                        <label class="block font-semibold mb-1">National ID</label>
+                        <input class="form-input w-full edit-field" name="national_id" value="{{ student.national_id }}" readonly />
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-semibold mb-1">Date of Birth</label>
+                        <input class="form-input w-full edit-field" name="date_of_birth" value="{{ student.date_of_birth }}" type="date" readonly required />
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-semibold mb-1">Age</label>
+                        <div class="form-input w-full bg-gray-100">{{ student.age }} years</div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Enrolled Courses</h2>
+            {% if courses %}
+                <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6">
+                {% for course in courses %}
+                    <div class="course-card bg-gray-50 border border-gray-200 rounded-lg p-6 flex flex-col">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
+                            <div class="font-semibold text-lg text-blue-700">{{ course.name }}</div>
+                            <div class="flex flex-wrap gap-2">
+                                <button class='btn btn-success bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm' type='button' onclick="openAddPaymentModal({{ course.id }}, '{{ course.name|e }}')"><i class="fas fa-plus mr-1"></i>Add Payment</button>
+                                <a href="/course/{{ course.id }}" class="btn btn-primary bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"><i class="fas fa-eye mr-1"></i>View Profile</a>
+                            </div>
+                        </div>
+                        <div class="text-gray-700 mb-1"><i class="fas fa-user mr-1"></i>Coach: {{ course.teacher }}</div>
+                        <div class="text-gray-700 mb-1"><i class="fas fa-calendar mr-1"></i>Start: {{ course.start_date }} | End: {{ course.end_date }}</div>
+                        <div class="text-gray-700 mb-1"><i class="fas fa-chart-line mr-1"></i>Sessions: {{ course.sessions_count }}</div>
+                        <div class="text-gray-700 mb-2"><i class="fas fa-clock mr-1"></i>Enrolled on: {{ course.enrollment_date }}</div>
+                        <div class="mt-2">
+                            <span class="font-semibold">Payments:</span>
+                            {% set payments = payments_by_course[course.id] if course.id in payments_by_course else [] %}
+                            {% if payments %}
+                                <div class="space-y-1 mt-1">
+                                {% for payment in payments %}
+                                    <div class="flex justify-between items-center bg-white border rounded px-3 py-1">
+                                        <span class="text-gray-800">{{ payment.month }}</span>
+                                        <span class="text-green-700 font-semibold">₪{{ '%.2f'|format(payment.amount) }}</span>
+                                        <span class="text-xs text-gray-500">({{ payment.payment_date }})</span>
+                                    </div>
+                                {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-gray-500 mt-1">No payments recorded for this course.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-gray-500">No courses enrolled.</div>
+            {% endif %}
+        </div>
+    </div>
+    <!-- Add Payment Modal -->
+    <div id="addPaymentModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+        <div class="modal-content bg-white rounded-lg shadow-lg p-4 sm:p-8 w-full max-w-md relative overflow-y-auto">
+            <button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl" onclick="closeAddPaymentModal()">&times;</button>
+            <h3 class="text-xl font-bold mb-4">Add Payment for <span id="modalCourseName"></span></h3>
+            <form id="addPaymentForm">
+                <input type="hidden" id="modalCourseId" name="course_id" />
+                <input type="hidden" id="modalStudentId" name="student_id" value="{{ student.id }}" />
+                <div class="mb-4">
+                    <label class="block font-semibold mb-1">Month</label>
+                    <input type="month" id="paymentMonth" name="month" class="form-input w-full" required />
+                </div>
+                <div class="mb-4">
+                    <label class="block font-semibold mb-1">Amount</label>
+                    <input type="number" id="paymentAmount" name="amount" class="form-input w-full" min="0" step="0.01" required />
+                </div>
+                <div class="mb-4">
+                    <label class="block font-semibold mb-1" data-i18n="Payment Method">Payment Method</label>
+                    <select id="paymentMethod" name="payment_method" class="form-input w-full" required>
+                        <option value="" disabled selected data-i18n="Select method...">Select method...</option>
+                        <option value="cash" data-i18n="Cash">Cash</option>
+                        <option value="check" data-i18n="Check">Check</option>
+                        <option value="transfer" data-i18n="Transfer">Transfer</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeAddPaymentModal()" class="btn btn-danger bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Cancel</button>
+                    <button type="submit" class="btn btn-primary bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Add Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/student.js') }}"></script>
+</body>
+</html> 

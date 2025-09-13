@@ -1,0 +1,180 @@
+/* Modal */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Form */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+/* Cards */
+.student-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+}
+
+.student-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.weekday-checkbox {
+    display: inline-block;
+    margin-right: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Calendar columns — keep children clipped inside */
+.calendar-day,
+.day-column {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 2px;
+    box-sizing: border-box;
+    overflow: hidden; /* ensure events can't escape horizontally */
+}
+
+/* Calendar event card — strong wrapping & limits */
+.calendar-event {
+    background: #fff;
+    color: #222;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;             /* clip internals */
+    white-space: normal;          /* allow wrapping */
+    word-break: break-word;       /* break long tokens */
+    overflow-wrap: anywhere;      /* modern helper for long URLs/words */
+    text-align: center;
+}
+
+/* Slot content */
+.time-slot-content {
+    position: relative;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+    .calendar-grid {
+        overflow-x: auto;
+    }
+
+    .calendar-day,
+    .day-column {
+        min-width: 100px;
+        width: 100%;
+        padding: 2px;
+        box-sizing: border-box;
+    }
+
+    .calendar-event {
+        font-size: 0.75rem;
+        padding: 4px 6px;
+        margin: 0;
+        white-space: normal;     /* ensure wrapping on mobile */
+        text-overflow: ellipsis;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+}
+
+
+
