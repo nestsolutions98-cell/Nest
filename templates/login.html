@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Sports Club</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+  <div class="w-full max-w-sm bg-white rounded-xl shadow p-6">
+    <div class="flex items-center gap-2 mb-4">
+      <i class="fas fa-dumbbell text-blue-600 text-2xl"></i>
+      <h1 class="text-xl font-bold text-gray-900">Sports Club Login</h1>
+    </div>
+
+    {% if error %}
+      <div class="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login', next=next_url) }}" class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+        <input name="username" class="w-full form-input border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <input type="password" name="password" class="w-full form-input border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next_url or url_for('home') }}">
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded py-2">Login</button>
+    </form>
+
+    <p class="mt-4 text-xs text-gray-500">
+      Tip: Set ADMIN_USERNAME and ADMIN_PASSWORD (or ADMIN_PASSWORD_HASH) in environment.
+    </p>
+  </div>
+</body>
+</html>
+
