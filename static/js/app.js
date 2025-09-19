@@ -6,6 +6,7 @@ let currentStudentId = null;
 let allStudents = [];
 let allCourses = [];
 let allEnrollments = [];
+let allCoaches = [];
 
 // Tooltip element for calendar events
 let calendarTooltip = null;
@@ -32,7 +33,11 @@ const translations = {
     'Students': 'Students',
     'Payments': 'Payments',
     'Analysis': 'Analysis',
-    'Other': 'Other',
+    'Coaches': 'Coaches',
+    'Add Coach': 'Add Coach',
+    'Search coaches...': 'Search coaches...',
+    'First Name': 'First Name',
+    'Last Name': 'Last Name',
     'Duration (minutes)': 'Duration (minutes)',
     'Invoice': 'Invoice',
     'Add Course': 'Add Course',
@@ -138,7 +143,11 @@ const translations = {
     'Students': 'תלמידים',
     'Payments': 'תשלומים',
     'Analysis': 'ניתוח',
-    'Other': 'אחר',
+    'Coaches': 'מאמנים',
+    'Add Coach': 'הוסף מאמן',
+    'Search coaches...': 'חפש מאמנים...',
+    'First Name': 'שם פרטי',
+    'Last Name': 'שם משפחה',
     'Invoice': 'חשבונית',
     'Add Course': 'הוסף קורס',
     'Add Student': 'הוסף תלמיד',
@@ -198,7 +207,7 @@ const translations = {
     'Payment Method': 'אמצעי תשלום',
     'Amount': 'סכום',
     'Cash': 'מזומן',
-    'Check': 'הבקשה',
+    'Check': 'אשראי',
     'Transfer': 'העברה',
     'Select method...': 'בחירת דרך תשלום',
     'Participant': 'משתתף',
@@ -319,7 +328,16 @@ function setupEventListeners() {
     });
 
     // Add course
-    document.getElementById('addCourseBtn').addEventListener('click', () => showModal('addCourseModal'));
+    document.getElementById('addCourseBtn').addEventListener('click', async () => {
+        showModal('addCourseModal');
+        try {
+            // Ensure coaches are loaded for the teacher picker
+            if (!Array.isArray(allCoaches) || allCoaches.length === 0) {
+                await loadCoaches();
+            }
+        } catch (e) { console.warn('Could not pre-load coaches', e); }
+        setupCourseTeacherPicker();
+    });
     document.getElementById('addCourseForm').addEventListener('submit', handleAddCourse);
 
     // Add student
@@ -328,6 +346,17 @@ function setupEventListeners() {
 
     // Student search
     document.getElementById('studentSearch').addEventListener('input', filterStudents);
+
+    // Coaches tab controls (if present)
+    const coachSearchEl = document.getElementById('coachSearch');
+    if (coachSearchEl) coachSearchEl.addEventListener('input', filterCoaches);
+    const addCoachBtn = document.getElementById('addCoachBtn');
+    if (addCoachBtn) addCoachBtn.addEventListener('click', () => {
+        showModal('addCoachModal');
+        setTimeout(() => document.getElementById('coachFirstName')?.focus(), 0);
+    });
+    const addCoachForm = document.getElementById('addCoachForm');
+    if (addCoachForm) addCoachForm.addEventListener('submit', handleAddCoach);
 
     // Course search
     document.getElementById('courseSearch').addEventListener('input', filterCourses);
@@ -451,6 +480,9 @@ function switchTab(tabName) {
         });
     } else if (tabName === 'analysis') {
         loadAnalysis();
+    } else if (tabName === 'other') {
+        // Coaches tab
+        loadCoaches();
     }
 }
 
@@ -544,8 +576,12 @@ function renderCalendar() {
             const dayEvents = getEventsForDateAndTime(dateStr, time);
             // Remove the dividing line between hour rows if any event continues
             const slotContinues = dayEvents.some(ev => !ev.isEnd);
-            html += `<div class="time-slot-content${slotContinues ? ' no-border' : ''}">`;
+            const multi = dayEvents.length > 1;
+            // When multiple events occur in the same slot, lay them out side‑by‑side
+            const containerStyle = multi ? 'flex-direction:row; align-items:stretch;' : '';
+            html += `<div class="time-slot-content${slotContinues ? ' no-border' : ''}" style="${containerStyle}">`;
             if (dayEvents.length > 0) {
+                const count = dayEvents.length;
                 dayEvents.forEach((event, index) => {
                     // Rounded corners and borders on start/end to visually connect segments as one pill
                     const radiusClasses = event.isStart && event.isEnd
@@ -561,13 +597,17 @@ function renderCalendar() {
                     const borderBottom = event.isEnd   ? `border-bottom: 4px solid ${event.color};` : 'border-bottom: none;';
                     const borderSides  = `border-left: 4px solid ${event.color}; border-right: 4px solid ${event.color};`;
 
+                    // Side-by-side layout sizing when multiple events share a slot
+                    const widthPct = multi ? (100 / count) : 100;
+                    const sideBySide = multi ? `width: calc(${widthPct}% - 4px); margin-inline-end: 4px;` : 'width:100%;';
+
                     html += `<div class="bg-white ${radiusClasses} ${shadowClasses} transition p-2 flex items-center justify-center calendar-event"
                         data-course-id="${event.id}"
                         data-course-name="${event.title}"
                         data-coach="${event.teacher}"
                         data-meetings-left="${event.classes_remaining}"
                         data-time="${event.time}"
-                        style="${borderTop} ${borderBottom} ${borderSides} min-width:0; width:100%; cursor:pointer; height:${event.segmentDuration}px; background:white; box-sizing:border-box;"
+                        style="${borderTop} ${borderBottom} ${borderSides} min-width:0; ${sideBySide} cursor:pointer; height:${event.segmentDuration}px; background:white; box-sizing:border-box;"
                         onclick="window.location.href='/course/${event.id}'"
                     >
                         ${event.isStart ? `<span class="font-bold text-sm text-gray-900 w-full block whitespace-nowrap overflow-hidden text-ellipsis text-center" style="line-height:1.2;">${event.title}</span>` : ''}
@@ -585,12 +625,23 @@ function renderCalendar() {
     
     container.innerHTML = html;
 
-    // Ensure day columns in the header line up with the scrollable body
+    // Ensure day columns in the header line up with the scrollable body.
+    // In RTL, the scrollbar is on the left, so pad the header on the left.
     const bodyEl = container.querySelector('.calendar-body');
     const headerEl = container.querySelector('.calendar-header');
     if (bodyEl && headerEl) {
         const scrollbarWidth = bodyEl.offsetWidth - bodyEl.clientWidth;
-        headerEl.style.paddingRight = `${scrollbarWidth}px`;
+        const dir = document.getElementById('mainBody')?.getAttribute('dir') || 'ltr';
+        // reset both sides first
+        headerEl.style.paddingRight = '0px';
+        headerEl.style.paddingLeft = '0px';
+        if (scrollbarWidth > 0) {
+            if (dir === 'rtl') {
+                headerEl.style.paddingLeft = `${scrollbarWidth}px`;
+            } else {
+                headerEl.style.paddingRight = `${scrollbarWidth}px`;
+            }
+        }
     }
 }
 
@@ -662,15 +713,13 @@ function renderCourses() {
   }
 
   container.innerHTML = allCourses.map(course => `
-    <div class="course-card">
+    <div class="course-card cursor-pointer" onclick="window.location.href='/course/${course.id}'">
       <div class="flex justify-between items-start">
         <div class="flex-1">
           <!-- color dot + title -->
           <div class="flex items-center mb-2 gap-2">
             <span class="w-4 h-4 rounded-full" style="background-color: ${course.color}"></span>
-            <h3 class="text-lg font-semibold text-gray-900">
-              <a href="/course/${course.id}" class="hover:underline">${course.name}</a>
-            </h3>
+            <h3 class="text-lg font-semibold text-gray-900">${course.name}</h3>
           </div>
 
           <!-- details with icon/text spacing -->
@@ -683,7 +732,7 @@ function renderCourses() {
 
         <!-- actions with spacing -->
         <div class="flex gap-2">
-          <button onclick="deleteCourse(${course.id})"
+          <button onclick="event.stopPropagation(); deleteCourse(${course.id})"
                   class="btn btn-danger btn-sm inline-flex items-center gap-2"
                   aria-label="Delete course">
             <i class="fas fa-trash"></i><span></span>
@@ -714,15 +763,13 @@ function filterCourses() {
   }
 
   container.innerHTML = filteredCourses.map(course => `
-    <div class="course-card">
+    <div class="course-card cursor-pointer" onclick="window.location.href='/course/${course.id}'">
       <div class="flex justify-between items-start">
         <div class="flex-1">
           <!-- color dot + title -->
           <div class="flex items-center mb-2 gap-2">
             <span class="w-4 h-4 rounded-full" style="background-color: ${course.color}"></span>
-            <h3 class="text-lg font-semibold text-gray-900">
-              <a href="/course/${course.id}" class="hover:underline">${course.name}</a>
-            </h3>
+            <h3 class="text-lg font-semibold text-gray-900">${course.name}</h3>
           </div>
 
           <!-- details with icon/text spacing -->
@@ -735,7 +782,7 @@ function filterCourses() {
 
         <!-- actions with spacing -->
         <div class="flex gap-2">
-          <button onclick="deleteCourse(${course.id})"
+          <button onclick="event.stopPropagation(); deleteCourse(${course.id})"
                   class="btn btn-danger btn-sm inline-flex items-center gap-2"
                   aria-label="Delete course">
             <i class="fas fa-trash"></i><span></span>
@@ -763,9 +810,19 @@ async function handleAddCourse(e) {
     }
     // Get selected color from radio group
     const color = document.querySelector('input[name="courseColor"]:checked').value;
+    const teacherInput = document.getElementById('courseTeacher');
+    const teacherName = teacherInput.value.trim();
+    // Require picking an existing coach
+    const coachMatch = (allCoaches || []).find(c => (`${c.first_name} ${c.last_name}`.trim().toLowerCase() === teacherName.toLowerCase()));
+    if (!coachMatch) {
+        alert('Please select a coach from the list.');
+        teacherInput.focus();
+        return;
+    }
+
     const formData = {
       name: document.getElementById('courseName').value,
-      teacher: document.getElementById('courseTeacher').value,
+      teacher: `${coachMatch.first_name} ${coachMatch.last_name}`.trim(),
       start_date: document.getElementById('courseStartDate').value,
       time: document.getElementById('courseTime').value,
       duration: parseInt(document.getElementById('courseDuration').value),
@@ -854,6 +911,154 @@ async function loadStudents() {
     }
 }
 
+// Coaches view (aggregated from courses/enrollments/payments)
+async function loadCoaches() {
+    try {
+        const resp = await fetch('/api/coaches');
+        allCoaches = await resp.json();
+        renderCoaches();
+    } catch (err) {
+        console.error('Error loading coaches:', err);
+        allCoaches = [];
+        renderCoaches();
+    }
+}
+
+function renderCoaches() {
+    const container = document.getElementById('coachesList');
+    if (!container) return;
+    if (!Array.isArray(allCoaches) || allCoaches.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">No coaches found. Add your first coach!</div>';
+        return;
+    }
+    container.innerHTML = allCoaches.map(coach => `
+      <div class="student-card cursor-pointer" onclick="window.location.href='/coach/${coach.id}'">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900">${coach.first_name} ${coach.last_name}</h3>
+            <div class="text-sm text-gray-600 space-y-1">
+              <p class="flex items-center gap-2"><i class="fas fa-phone"></i><span>${coach.phone || ''}</span></p>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button onclick="event.stopPropagation(); sendWhatsAppToCoach('${coach.phone || ''}')"
+                    class="btn btn-success btn-sm inline-flex items-center gap-2" aria-label="WhatsApp">
+              <i class="fab fa-whatsapp"></i><span></span>
+            </button>
+            <button onclick="event.stopPropagation(); deleteCoach(${coach.id})"
+                    class="btn btn-danger btn-sm inline-flex items-center gap-2" aria-label="Delete">
+              <i class="fas fa-trash"></i><span></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+}
+
+function filterCoaches() {
+    const input = document.getElementById('coachSearch');
+    if (!input) return;
+    const term = input.value.toLowerCase();
+    const filtered = (allCoaches || []).filter(c =>
+        (c.first_name + ' ' + c.last_name).toLowerCase().includes(term) ||
+        (c.phone || '').includes(term)
+    );
+    const container = document.getElementById('coachesList');
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">No coaches found matching your search.</div>';
+        return;
+    }
+    container.innerHTML = filtered.map(coach => `
+      <div class="student-card cursor-pointer" onclick="window.location.href='/coach/${coach.id}'">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900">${coach.first_name} ${coach.last_name}</h3>
+            <div class="text-sm text-gray-600 space-y-1">
+              <p class="flex items-center gap-2"><i class="fas fa-phone"></i><span>${coach.phone || ''}</span></p>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="event.stopPropagation(); sendWhatsAppToCoach('${coach.phone || ''}')"
+                    class="btn btn-success btn-sm inline-flex items-center gap-2" aria-label="WhatsApp">
+              <i class="fab fa-whatsapp"></i><span></span>
+            </button>
+            <button onclick="event.stopPropagation(); deleteCoach(${coach.id})"
+                    class="btn btn-danger btn-sm inline-flex items-center gap-2" aria-label="Delete">
+              <i class="fas fa-trash"></i><span></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+}
+
+// Helpers for coach actions
+function viewCoachCourses(encodedName) {
+    const name = decodeURIComponent(encodedName);
+    switchTab('courses');
+    const input = document.getElementById('courseSearch');
+    if (input) {
+        input.value = name;
+        filterCourses();
+    }
+}
+
+function addCourseForCoach(encodedName) {
+    const name = decodeURIComponent(encodedName);
+    showModal('addCourseModal');
+    const teacherEl = document.getElementById('courseTeacher');
+    if (teacherEl) teacherEl.value = name;
+    setTimeout(() => teacherEl?.focus(), 0);
+}
+
+// Coach CRUD helpers
+async function handleAddCoach(e) {
+    e.preventDefault();
+    const first = document.getElementById('coachFirstName').value.trim();
+    const last = document.getElementById('coachLastName').value.trim();
+    const phone = document.getElementById('coachPhone').value.trim();
+    if (!first || !last || !phone) {
+        alert('Please fill in all fields.');
+        return;
+    }
+    try {
+        const resp = await fetch('/api/coaches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ first_name: first, last_name: last, phone })
+        });
+        if (resp.ok) {
+            document.getElementById('addCoachForm').reset();
+            closeAllModals();
+            await loadCoaches();
+        } else {
+            const data = await resp.json().catch(() => ({}));
+            alert(data.error || 'Error creating coach');
+        }
+    } catch (err) {
+        console.error('Error creating coach:', err);
+        alert('Error creating coach');
+    }
+}
+
+async function deleteCoach(id) {
+    if (!confirm('Are you sure you want to delete this coach?')) return;
+    try {
+        const resp = await fetch(`/api/coaches/${id}`, { method: 'DELETE' });
+        if (resp.ok) {
+            await loadCoaches();
+        } else {
+            alert('Error deleting coach');
+        }
+    } catch (err) {
+        console.error('Error deleting coach:', err);
+        alert('Error deleting coach');
+    }
+}
+
+function sendWhatsAppToCoach(phone) { return sendWhatsAppToStudent(phone); }
+
 function renderStudents() {
   const container = document.getElementById('studentsList');
 
@@ -863,7 +1068,7 @@ function renderStudents() {
   }
 
   container.innerHTML = allStudents.map(student => `
-    <div class="student-card">
+    <div class="student-card cursor-pointer" onclick="window.location.href='/student/${student.id}'">
       <div class="flex justify-between items-start">
         <div class="flex-1">
           <h3 class="text-lg font-semibold text-gray-900">${student.first_name} ${student.fathers_name}</h3>
@@ -879,15 +1084,11 @@ function renderStudents() {
         </div>
 
         <div class="flex gap-2">
-            <button onclick="window.location.href='/student/${student.id}'"
-                    class="btn btn-primary btn-sm inline-flex items-center gap-2">
-              <i class="fas fa-user"></i><span>${t('Profile')}</span>
-            </button>
-          <button onclick="sendWhatsAppToStudent('${student.phone}')"
+          <button onclick="event.stopPropagation(); sendWhatsAppToStudent('${student.phone}')"
                   class="btn btn-success btn-sm inline-flex items-center gap-2" aria-label="WhatsApp">
             <i class="fab fa-whatsapp"></i><span></span>
           </button>
-          <button onclick="deleteStudent(${student.id})"
+          <button onclick="event.stopPropagation(); deleteStudent(${student.id})"
                   class="btn btn-danger btn-sm inline-flex items-center gap-2" aria-label="Delete">
             <i class="fas fa-trash"></i><span></span>
           </button>
@@ -914,7 +1115,7 @@ function filterStudents() {
   }
 
   container.innerHTML = filteredStudents.map(student => `
-    <div class="student-card">
+    <div class="student-card cursor-pointer" onclick="window.location.href='/student/${student.id}'">
       <div class="flex justify-between items-start">
         <div class="flex-1">
           <h3 class="text-lg font-semibold text-gray-900">${student.first_name} ${student.fathers_name}</h3>
@@ -930,15 +1131,11 @@ function filterStudents() {
         </div>
 
         <div class="flex gap-2">
-            <button onclick="window.location.href='/student/${student.id}'"
-                    class="btn btn-primary btn-sm inline-flex items-center gap-2">
-              <i class="fas fa-user"></i><span>${t('Profile')}</span>
-            </button>
-          <button onclick="sendWhatsAppToStudent('${student.phone}')"
+          <button onclick="event.stopPropagation(); sendWhatsAppToStudent('${student.phone}')"
                   class="btn btn-success btn-sm inline-flex items-center gap-2" aria-label="WhatsApp">
             <i class="fab fa-whatsapp"></i><span></span>
           </button>
-          <button onclick="deleteStudent(${student.id})"
+          <button onclick="event.stopPropagation(); deleteStudent(${student.id})"
                   class="btn btn-danger btn-sm inline-flex items-center gap-2" aria-label="Delete">
             <i class="fas fa-trash"></i><span></span>
           </button>
@@ -1045,16 +1242,13 @@ async function loadCourseStudents(courseId) {
         }
         
         container.innerHTML = students.map(student => `
-            <div class="flex justify-between items-center p-2 border-b border-gray-200">
+            <div class="flex justify-between items-center p-2 border-b border-gray-200 cursor-pointer" onclick="window.location.href='/student/${student.id}'">
                 <div>
                     <div class="font-semibold">${student.first_name} ${student.fathers_name}</div>
                     <div class="text-sm text-gray-600">${student.phone}</div>
                 </div>
                 <div class="flex space-x-2">
-                    <button onclick="window.location.href='/student/${student.id}'" class="btn btn-primary btn-sm">
-                        <i class="fas fa-user mr-1"></i>Profile
-                    </button>
-                    <button onclick="removeStudentFromCourse(${student.id})" class="btn btn-danger btn-sm">
+                    <button onclick="event.stopPropagation(); removeStudentFromCourse(${student.id})" class="btn btn-danger btn-sm" title="Remove from course">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -1526,94 +1720,63 @@ async function deletePayment(paymentId) {
 }
 
 async function generateInvoice(paymentId) {
-    try {
-        console.log('Generating invoice for payment ID:', paymentId);
-        
-        const response = await fetch(`/api/invoice/${paymentId}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const invoice = await response.json();
-        console.log('Invoice data received:', invoice);
-        
-        if (invoice.error) {
-            alert('Error generating invoice: ' + invoice.error);
-            return;
-        }
-        
-        // Create a simple invoice display (in a real app, you'd generate a PDF)
-        const invoiceWindow = window.open('', '_blank');
-        
-        if (!invoiceWindow) {
-            alert('Unable to open new tab. Please check your browser settings.');
-            return;
-        }
-        
-        const methodDisplay = formatPaymentMethod(invoice.payment_method);
-
-        invoiceWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Invoice ${invoice.invoice_number}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 40px; background-color: #f9f9f9; }
-                    .invoice-container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                    .invoice-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #3B82F6; padding-bottom: 20px; }
-                    .invoice-header h1 { color: #3B82F6; margin: 0; }
-                    .invoice-header h2 { color: #666; margin: 10px 0 0 0; }
-                    .invoice-details { margin-bottom: 30px; }
-                    .invoice-details p { margin: 8px 0; }
-                    .invoice-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                    .invoice-table th, .invoice-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-                    .invoice-table th { background-color: #f8f9fa; font-weight: bold; }
-                    .total { font-weight: bold; font-size: 1.2em; background-color: #f8f9fa; }
-                    .print-btn { background: #3B82F6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 20px; }
-                    .print-btn:hover { background: #2563EB; }
-                </style>
-            </head>
-            <body>
-                <div class="invoice-container">
-                    <div class="invoice-header">
-                        <h1>INVOICE</h1>
-                        <h2>${invoice.invoice_number}</h2>
-                    </div>
-                    <div class="invoice-details">
-                        <p><strong>Date:</strong> ${invoice.payment_date}</p>
-                        <p><strong>Student:</strong> ${invoice.student_name}</p>
-                        <p><strong>Course:</strong> ${invoice.course_name}</p>
-                        <p><strong>Coach:</strong> ${invoice.teacher_name}</p>
-                        <p><strong>Payment Method:</strong> ${methodDisplay}</p>
-                        <p><strong>Month:</strong> ${invoice.month}</p>
-                    </div>
-                    <table class="invoice-table">
-                        <tr>
-                            <th>Description</th>
-                            <th>Amount</th>
-                        </tr>
-                        <tr>
-                            <td>Course Payment - ${invoice.course_name}</td>
-                            <td>${invoice.amount_text}</td>
-                        </tr>
-                        <tr class="total">
-                            <td>Total</td>
-                            <td>${invoice.amount_text}</td>
-                        </tr>
-                    </table>
-                    <button class="print-btn" onclick="window.print()">Print Invoice</button>
-                </div>
-            </body>
-            </html>
-        `);
-        invoiceWindow.document.close();
-        
-        console.log('Invoice opened in new tab successfully');
-    } catch (error) {
-        console.error('Error generating invoice:', error);
-        alert('Error generating invoice: ' + error.message);
+  try {
+    // Prefer real Green Invoice (server will error if not configured)
+    const resp = await fetch(`/api/green-invoice/${paymentId}`, { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      console.warn('Green Invoice failed or not configured:', data);
+      return legacyPreviewInvoice(paymentId);
     }
+    if (data.url) {
+      window.open(data.url, '_blank');
+      return;
+    }
+    if (data.pdf) {
+      const w = window.open('');
+      w.document.write(`<iframe width="100%" height="100%" src="data:application/pdf;base64,${data.pdf}"></iframe>`);
+      return;
+    }
+    alert('Invoice created. Document ID: ' + (data.docId || 'unknown'));
+  } catch (e) {
+    console.error('Error creating Green Invoice', e);
+    return legacyPreviewInvoice(paymentId);
+  }
+}
+
+async function legacyPreviewInvoice(paymentId) {
+  try {
+    const response = await fetch(`/api/invoice/${paymentId}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const invoice = await response.json();
+    const methodDisplay = formatPaymentMethod(invoice.payment_method);
+    const win = window.open('', '_blank');
+    if (!win) return alert('Unable to open new tab. Please allow popups.');
+    win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
+      <style>body{font-family:Arial,sans-serif;margin:40px;background:#f9f9f9}.invoice-container{max-width:800px;margin:0 auto;background:#fff;padding:40px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}.invoice-header{text-align:center;margin-bottom:30px;border-bottom:2px solid #3B82F6;padding-bottom:20px}.invoice-header h1{color:#3B82F6;margin:0}.invoice-header h2{color:#666;margin:10px 0 0}.invoice-details p{margin:8px 0}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #ddd;padding:12px;text-align:left}th{background:#f8f9fa;font-weight:bold}.total{font-weight:bold;font-size:1.2em;background:#f8f9fa}.print-btn{background:#3B82F6;color:#fff;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;margin-top:20px}.print-btn:hover{background:#2563EB}</style>
+      </head><body>
+      <div class="invoice-container">
+        <div class="invoice-header"><h1>INVOICE</h1><h2>${invoice.invoice_number}</h2></div>
+        <div class="invoice-details">
+          <p><strong>Date:</strong> ${invoice.payment_date}</p>
+          <p><strong>Student:</strong> ${invoice.student_name}</p>
+          <p><strong>Course:</strong> ${invoice.course_name}</p>
+          <p><strong>Coach:</strong> ${invoice.teacher_name}</p>
+          <p><strong>Payment Method:</strong> ${methodDisplay}</p>
+          <p><strong>Month:</strong> ${invoice.month}</p>
+        </div>
+        <table><tr><th>Description</th><th>Amount</th></tr>
+          <tr><td>Course Payment - ${invoice.course_name}</td><td>${invoice.amount_text}</td></tr>
+          <tr class="total"><td>Total</td><td>${invoice.amount_text}</td></tr>
+        </table>
+        <button class="print-btn" onclick="window.print()">Print Invoice</button>
+      </div>
+      </body></html>`);
+    win.document.close();
+  } catch (err) {
+    console.error('Legacy preview failed', err);
+    alert('Error generating invoice');
+  }
 }
 
 // Analysis Functions
@@ -2215,4 +2378,60 @@ function setupPaymentCourseSearch() {
     input.addEventListener('blur', function() {
         setTimeout(() => dropdown.classList.add('hidden'), 200);
     });
-} 
+}
+
+// Coach picker for Add Course modal (typeahead dropdown)
+function setupCourseTeacherPicker() {
+    const input = document.getElementById('courseTeacher');
+    const dropdown = document.getElementById('courseTeacherDropdown');
+    if (!input || !dropdown) return;
+
+    // Clear any previous selection text
+    // input.value = '' // keep existing text if any
+
+    const buildList = (term) => {
+        const t = (term || '').toLowerCase();
+        const items = (allCoaches || []).filter(c =>
+            `${c.first_name} ${c.last_name}`.toLowerCase().includes(t) ||
+            (c.phone || '').includes(t)
+        );
+        if (items.length === 0) {
+            dropdown.innerHTML = '<div class="p-2 text-gray-500">No matches found</div>';
+            dropdown.classList.remove('hidden');
+            return;
+        }
+        dropdown.innerHTML = items.map(c => {
+            const name = `${c.first_name} ${c.last_name}`.trim();
+            return `<div class='p-2 hover:bg-blue-100 cursor-pointer' data-name='${name.replace(/'/g, "&#39;")}' data-id='${c.id}'>${name} <span class='text-xs text-gray-400'>${c.phone || ''}</span></div>`;
+        }).join('');
+        dropdown.classList.remove('hidden');
+        Array.from(dropdown.children).forEach(child => {
+            child.onclick = function() {
+                input.value = this.getAttribute('data-name');
+                dropdown.classList.add('hidden');
+            };
+        });
+    };
+
+    // Avoid duplicate listeners by cloning input listeners is heavy; use one-time flag
+    if (!input.dataset.pickerBound) {
+        input.addEventListener('input', function() {
+            const term = input.value.trim();
+            if (!term) {
+                dropdown.innerHTML = '';
+                dropdown.classList.add('hidden');
+                return;
+            }
+            // Ensure we have latest coaches list
+            if (!Array.isArray(allCoaches) || allCoaches.length === 0) {
+                loadCoaches().then(() => buildList(term));
+            } else {
+                buildList(term);
+            }
+        });
+        input.addEventListener('blur', function() {
+            setTimeout(() => dropdown.classList.add('hidden'), 200);
+        });
+        input.dataset.pickerBound = '1';
+    }
+}

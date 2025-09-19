@@ -44,6 +44,9 @@
             <button class="nav-tab" data-tab="courses" data-i18n="Courses">
                 <i class="fas fa-dumbbell mr-2 text-lg text-blue-500"></i>Courses
             </button>
+            <button class="nav-tab" data-tab="other" data-i18n="Coaches">
+                <i class="fas fa-chart-bar mr-2 text-lg text-blue-500"></i>Coaches
+            </button>
             <button class="nav-tab" data-tab="students" data-i18n="Students">
                 <i class="fas fa-users mr-2 text-lg text-blue-500"></i>Students
             </button>
@@ -52,9 +55,6 @@
             </button>
             <button class="nav-tab" data-tab="analysis" data-i18n="Analysis">
                 <i class="fas fa-chart-bar mr-2 text-lg text-blue-500"></i>Analysis
-            </button>
-            <button class="nav-tab" data-tab="other" data-i18n="Other">
-                <i class="fas fa-chart-bar mr-2 text-lg text-blue-500"></i>Other
             </button>
         </div>
 
@@ -243,6 +243,64 @@
                 </div>
             </div>
         </div>
+
+        <!-- Coaches Tab -->
+        <div id="other" class="tab-content">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900" data-i18n="Coaches">Coaches</h2>
+                    <button id="addCoachBtn" class="btn btn-primary" data-i18n="Add Coach">
+                        <i class="fas fa-plus mr-2"></i>Add Coach
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <input type="text" id="coachSearch" class="form-input w-full max-w-md" data-i18n-placeholder="Search coaches..." placeholder="Search coaches...">
+                </div>
+
+                <div class="overflow-x-auto w-full">
+                    <div id="coachesList" class="min-w-[700px]">
+                        <!-- Coaches will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Coach Modal -->
+    <div id="addCoachModal" class="modal hidden">
+        <div class="modal-content w-full max-w-full px-4 sm:max-w-md sm:px-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" data-i18n="Add Coach">Add Coach</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <form id="addCoachForm">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="First Name">First Name</label>
+                    <input type="text" id="coachFirstName" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Last Name">Last Name</label>
+                    <input type="text" id="coachLastName" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="Phone">Phone Number</label>
+                    <input type="tel" id="coachPhone" class="form-input" required>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary flex-1" data-i18n="Add Coach">
+                        Add Coach
+                    </button>
+                    <button type="button" class="btn btn-danger flex-1 close-modal" data-i18n="Cancel">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Course Modal -->
@@ -293,9 +351,10 @@
                     <input type="text" id="courseName" class="form-input" required>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group relative">
                     <label class="form-label" data-i18n="Teacher">Coach Name</label>
-                    <input type="text" id="courseTeacher" class="form-input" required>
+                    <input type="text" id="courseTeacher" class="form-input" autocomplete="off" required>
+                    <div id="courseTeacherDropdown" class="absolute left-0 z-50 bg-white border border-gray-200 rounded shadow mt-1 w-full hidden"></div>
                 </div>
 
                 <div class="form-group">

@@ -21,6 +21,7 @@
       'Add Meeting': 'Add Meeting',
       'No notes': 'No notes',
       'Edit': 'Edit',
+      'Delete': 'Delete',
       'attended': 'attended',
       'total students': 'total students',
       'No meetings scheduled yet.': 'No meetings scheduled yet.',
@@ -49,6 +50,7 @@
       'Please select at least one student to enroll.': 'Please select at least one student to enroll.',
       'Failed to enroll students. Please try again.': 'Failed to enroll students. Please try again.',
       'Failed to unenroll student. Please try again.': 'Failed to unenroll student. Please try again.'
+      , 'Are you sure you want to delete this meeting?': 'Are you sure you want to delete this meeting?'
     },
     he: {
       'Sports Club Management': 'Sports Club Management',
@@ -68,6 +70,7 @@
       'Add Meeting': 'הוסף מפגש',
       'No notes': 'ללא הערות',
       'Edit': 'ערוך',
+      'Delete': 'מחק',
       'attended': 'נוכחו',
       'total students': 'סה״כ תלמידים',
       'No meetings scheduled yet.': 'אין מפגשים מתוכננים עדיין.',
@@ -96,6 +99,7 @@
       'Please select at least one student to enroll.': 'בחר לפחות תלמיד אחד לרישום.',
       'Failed to enroll students. Please try again.': 'רישום התלמידים נכשל. נסה שוב.',
       'Failed to unenroll student. Please try again.': 'הסרת התלמיד נכשלה. נסה שוב.'
+      , 'Are you sure you want to delete this meeting?': 'האם למחוק את המפגש?' 
     }
   };
 
@@ -267,6 +271,26 @@
         alert(t('Failed to update meeting.'));
       }
     };
+  }
+
+  /* ---------- Delete Meeting ---------- */
+  window.deleteMeeting = async function (meetingId) {
+    if (!confirm(t('Are you sure you want to delete this meeting?') || 'Are you sure you want to delete this meeting?')) return;
+    try {
+      const resp = await fetch(`/api/meetings/${meetingId}`, { method: 'DELETE' });
+      if (resp.ok) {
+        // remove card from DOM
+        const card = document.querySelector(`[data-meeting-id="${meetingId}"]`);
+        if (card && card.parentNode) card.parentNode.removeChild(card);
+        // optionally update counter
+        // location.reload();
+      } else {
+        alert('Failed to delete meeting.');
+      }
+    } catch (e) {
+      console.error('Delete meeting failed', e);
+      alert('Failed to delete meeting.');
+    }
   }
 
   /* ---------- Enroll / Unenroll Students ---------- */
@@ -448,4 +472,3 @@
     setupStudentSearch();
   }
 })();
-

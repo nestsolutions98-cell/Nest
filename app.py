@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from io import BytesIO
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,12 +39,12 @@ db = SQLAlchemy(app)
 CORS(app)
 
 # ---- Simple session-based auth configuration ----
-ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'waha')
 # Prefer a password hash via ADMIN_PASSWORD_HASH, else hash ADMIN_PASSWORD at startup
 from werkzeug.security import check_password_hash, generate_password_hash
 
 _pwd_hash_env = os.getenv('ADMIN_PASSWORD_HASH')
-_pwd_plain = os.getenv('ADMIN_PASSWORD', 'admin123')
+_pwd_plain = os.getenv('ADMIN_PASSWORD', 'waha123')
 ADMIN_PASSWORD_HASH = _pwd_hash_env or generate_password_hash(_pwd_plain)
 
 
@@ -57,6 +58,30 @@ def login_required(view_func):
         return view_func(*args, **kwargs)
 
     return wrapped
+
+# ---------------- Green Invoice config ----------------
+GI_API_BASE = os.getenv('GI_API_BASE', 'https://api.greeninvoice.co.il/api/v1')
+GI_CLIENT_ID = os.getenv('GI_CLIENT_ID')
+GI_CLIENT_SECRET = os.getenv('GI_CLIENT_SECRET')
+try:
+    GI_DOC_TYPE = int(os.getenv('GI_DOC_TYPE', '400'))  # 400 invoice/receipt; 320 tax invoice
+except Exception:
+    GI_DOC_TYPE = 400
+GI_SEND_EMAIL = (os.getenv('GI_SEND_EMAIL', 'false').lower() == 'true')
+
+def _gi_token():
+    if not GI_CLIENT_ID or not GI_CLIENT_SECRET:
+        raise RuntimeError('Green Invoice credentials are not configured')
+    r = requests.post(f'{GI_API_BASE}/account/token', json={'id': GI_CLIENT_ID, 'secret': GI_CLIENT_SECRET}, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    token = data.get('token')
+    if not token:
+        raise RuntimeError('Failed to fetch Green Invoice token')
+    return token
+
+def _gi_headers(token: str):
+    return {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
 
 
 # Database Models
@@ -89,6 +114,22 @@ class Course(db.Model):
             'color': self.color
         }
 
+
+class Coach(db.Model):
+    __tablename__ = 'coaches'
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(50), nullable=False)
+    last_name = db.Column(db.String(50), nullable=False)
+    phone = db.Column(db.String(20), unique=True, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'phone': self.phone,
+            'full_name': f"{self.first_name} {self.last_name}".strip()
+        }
 
 class Student(db.Model):
     __tablename__ = 'students'
@@ -179,47 +220,126 @@ def create_database():
 
         # Add color column to existing courses if it doesn't exist
         try:
-            db.session.execute(text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT "#3B82F6"'))
+            if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+                db.session.execute(text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT "#3B82F6"'))
+            else:
+                db.session.execute(text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT \'#3B82F6\''))
             db.session.commit()
             logger.info("Added color column to existing courses")
         except Exception as e:
             # Column might already exist
-            pass
+            logger.info(f"Color column might already exist: {e}")
 
         logger.info("Database created successfully with correct schema!")
+
+
+def reset_database():
+    """Reset the database completely - useful for Railway deployment"""
+    with app.app_context():
+        try:
+            # Drop all tables
+            db.drop_all()
+            logger.info("Dropped all existing tables")
+            
+            # Create all tables with current schema
+            db.create_all()
+            logger.info("Created all tables with current schema")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error resetting database: {e}")
+            return False
 
 
 def migrate_existing_data():
     with app.app_context():
         # Check if we need to migrate existing tables
         inspector = db.inspect(db.engine)
-        if 'courses' in inspector.get_table_names():
+        table_names = inspector.get_table_names()
+        
+        # If no tables exist, create all tables
+        if not table_names:
+            db.create_all()
+            logger.info("Database created successfully with correct schema!")
+            return
+            
+        # Check if courses table exists and has all required columns
+        if 'courses' in table_names:
             course_columns = [col['name'] for col in inspector.get_columns('courses')]
+            missing_columns = []
+            
             if 'duration' not in course_columns:
+                missing_columns.append('duration')
+            if 'color' not in course_columns:
+                missing_columns.append('color')
+                
+            # Add missing columns based on database type
+            if missing_columns:
                 try:
-                    db.session.execute(text('ALTER TABLE courses ADD COLUMN duration INTEGER DEFAULT 60'))
+                    if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+                        # SQLite syntax
+                        for col in missing_columns:
+                            if col == 'duration':
+                                db.session.execute(text('ALTER TABLE courses ADD COLUMN duration INTEGER DEFAULT 60'))
+                            elif col == 'color':
+                                db.session.execute(text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT "#3B82F6"'))
+                    else:
+                        # PostgreSQL syntax
+                        for col in missing_columns:
+                            if col == 'duration':
+                                db.session.execute(text('ALTER TABLE courses ADD COLUMN duration INTEGER DEFAULT 60'))
+                            elif col == 'color':
+                                db.session.execute(text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT \'#3B82F6\''))
+                    
                     db.session.commit()
-                    logger.info("Added duration column to existing courses table")
+                    logger.info(f"Added missing columns to courses table: {missing_columns}")
                 except Exception as e:
-                    logger.error(f"Error adding duration column to courses table: {e}")
-        if 'payments' in inspector.get_table_names():
-            columns = [col['name'] for col in inspector.get_columns('payments')]
-            if 'course_id' not in columns or 'amount' not in columns:
+                    logger.error(f"Error adding columns to courses table: {e}")
+                    # If ALTER TABLE fails, recreate the table
+                    try:
+                        db.session.execute(text('DROP TABLE IF EXISTS courses CASCADE'))
+                        db.create_all()
+                        logger.info("Recreated courses table with correct schema")
+                    except Exception as e2:
+                        logger.error(f"Error recreating courses table: {e2}")
+        
+        # Check payments table
+        if 'payments' in table_names:
+            payment_columns = [col['name'] for col in inspector.get_columns('payments')]
+            missing_payment_columns = []
+            
+            if 'course_id' not in payment_columns or 'amount' not in payment_columns:
                 # Drop and recreate the payments table
-                db.session.execute(text('DROP TABLE IF EXISTS payments'))
-                db.create_all()
-                logger.info("Payment table migrated successfully!")
-            elif 'payment_method' not in columns:
-                # Add payment_method column to existing payments table
                 try:
-                    db.session.execute(text('ALTER TABLE payments ADD COLUMN payment_method VARCHAR(20)'))
+                    db.session.execute(text('DROP TABLE IF EXISTS payments CASCADE'))
+                    db.create_all()
+                    logger.info("Payment table recreated successfully!")
+                except Exception as e:
+                    logger.error(f"Error recreating payments table: {e}")
+            elif 'payment_method' not in payment_columns:
+                # Add payment_method column
+                try:
+                    if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+                        db.session.execute(text('ALTER TABLE payments ADD COLUMN payment_method VARCHAR(20)'))
+                    else:
+                        db.session.execute(text('ALTER TABLE payments ADD COLUMN payment_method VARCHAR(20)'))
                     db.session.commit()
                     logger.info("Added payment_method column to existing payments table")
                 except Exception as e:
                     logger.error(f"Error adding payment_method column: {e}")
-        else:
-            db.create_all()
-            logger.info("Database created successfully with correct schema!")
+        
+        # Ensure all tables exist
+        db.create_all()
+
+        # Ensure coaches table exists for existing DBs without running full migrations in prod
+        try:
+            inspector = db.inspect(db.engine)
+            if 'coaches' not in inspector.get_table_names():
+                Coach.__table__.create(db.engine)
+                logger.info("Created missing 'coaches' table")
+        except Exception as e:
+            logger.error(f"Error ensuring coaches table exists: {e}")
+        logger.info("Database migration completed successfully!")
 
 
 def compute_schedule_metrics(weekdays_str: str, sessions_count: int):
@@ -269,6 +389,23 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
+@app.route('/admin/reset-database', methods=['POST'])
+def admin_reset_database():
+    """Reset database - only accessible in development or with proper auth"""
+    # Only allow in development or if user is admin
+    if os.getenv('FLASK_ENV') != 'development' and not session.get('user'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        if reset_database():
+            return jsonify({'message': 'Database reset successfully'}), 200
+        else:
+            return jsonify({'error': 'Failed to reset database'}), 500
+    except Exception as e:
+        logger.error(f"Error in admin reset database: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/course/<int:course_id>')
@@ -427,6 +564,78 @@ def update_course(course_id):
 
     db.session.commit()
     return jsonify(course.to_dict())
+
+
+# ---------------- Coaches API ----------------
+@app.route('/api/coaches')
+def get_coaches():
+    coaches = Coach.query.all()
+    return jsonify([c.to_dict() for c in coaches])
+
+
+@app.route('/api/coaches/<int:coach_id>', methods=['GET'])
+def get_coach(coach_id):
+    coach = Coach.query.get_or_404(coach_id)
+    return jsonify(coach.to_dict())
+
+
+@app.route('/api/coaches', methods=['POST'])
+def create_coach():
+    data = request.json or {}
+    try:
+        coach = Coach(
+            first_name=data.get('first_name', '').strip(),
+            last_name=data.get('last_name', '').strip(),
+            phone=data.get('phone', '').strip(),
+        )
+        if not coach.first_name or not coach.last_name or not coach.phone:
+            return jsonify({'error': 'first_name, last_name and phone are required'}), 400
+        db.session.add(coach)
+        db.session.commit()
+        return jsonify(coach.to_dict()), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Coach phone must be unique'}), 409
+
+
+@app.route('/api/coaches/<int:coach_id>', methods=['PUT'])
+def update_coach(coach_id):
+    data = request.json or {}
+    coach = Coach.query.get_or_404(coach_id)
+    coach.first_name = data.get('first_name', coach.first_name)
+    coach.last_name = data.get('last_name', coach.last_name)
+    coach.phone = data.get('phone', coach.phone)
+    try:
+        db.session.commit()
+        return jsonify(coach.to_dict())
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Coach phone must be unique'}), 409
+
+
+@app.route('/api/coaches/<int:coach_id>', methods=['DELETE'])
+def delete_coach(coach_id):
+    coach = Coach.query.get_or_404(coach_id)
+    db.session.delete(coach)
+    db.session.commit()
+    return '', 204
+
+
+@app.route('/coach/<int:coach_id>')
+def coach_profile(coach_id):
+    if not session.get('user'):
+        return redirect(url_for('login', next=request.path))
+
+    coach = Coach.query.get_or_404(coach_id)
+    full_name = f"{coach.first_name} {coach.last_name}".strip()
+
+    # Find courses taught by this coach by matching the teacher field to full name
+    courses = Course.query.filter(Course.teacher == full_name).all()
+
+    # Prepare course dicts for template
+    courses_data = [c.to_dict() for c in courses]
+
+    return render_template('coach.html', coach=coach.to_dict(), courses=courses_data)
 
 
 @app.route('/api/courses/<int:course_id>')
@@ -874,6 +1083,76 @@ def generate_invoice(payment_id):
         return jsonify({'error': f'Error generating invoice: {str(e)}'}), 500
 
 
+@app.route('/api/green-invoice/<int:payment_id>', methods=['POST'])
+def create_green_invoice(payment_id: int):
+    """Create a real invoice in Green Invoice for the given payment.
+    Requires GI_CLIENT_ID and GI_CLIENT_SECRET to be configured.
+    """
+    try:
+        payment = Payment.query.get_or_404(payment_id)
+
+        if not payment.student:
+            return jsonify({'error': 'Student not found for this payment'}), 404
+        if not payment.course:
+            return jsonify({'error': 'Course not found for this payment'}), 404
+
+        token = _gi_token()
+
+        student_name = f"{payment.student.first_name} {payment.student.fathers_name}".strip()
+        course_desc = f"{payment.course.name} - {payment.month}"
+
+        payload = {
+            'type': GI_DOC_TYPE,
+            'lang': 'he',
+            'currency': 'ILS',
+            'income': True,
+            'rounding': 0,
+            'client': {
+                'name': student_name,
+                'phones': [payment.student.phone] if payment.student.phone else [],
+                'country': 'IL'
+            },
+            'items': [{
+                'description': course_desc,
+                'quantity': 1,
+                'price': float(payment.amount)
+                # 'vatType': 0  # If VAT included; align with your GI settings
+            }],
+            'sendEmail': GI_SEND_EMAIL
+        }
+
+        r = requests.post(f'{GI_API_BASE}/documents', headers=_gi_headers(token), json=payload, timeout=30)
+        if not r.ok:
+            return jsonify({'error': 'green_invoice_create_failed', 'status': r.status_code, 'details': r.text}), r.status_code
+        doc = r.json() or {}
+        doc_id = doc.get('id') or doc.get('_id')
+
+        # Try issuing (some accounts require it)
+        try:
+            requests.post(f'{GI_API_BASE}/documents/issue', headers=_gi_headers(token), json={'ids': [doc_id]}, timeout=20)
+        except Exception:
+            pass
+
+        # Direct URL (if present)
+        url = doc.get('url')
+        if url:
+            return jsonify({'ok': True, 'docId': doc_id, 'url': url, 'doc': doc})
+
+        # Try fetching PDF (base64) as a fallback
+        pdf_data = None
+        try:
+            pr = requests.get(f'{GI_API_BASE}/documents/{doc_id}/pdf', headers=_gi_headers(token), timeout=30)
+            if pr.ok and pr.headers.get('Content-Type', '').startswith('application/json'):
+                pdf_data = pr.json().get('data')
+        except Exception:
+            pass
+
+        return jsonify({'ok': True, 'docId': doc_id, 'pdf': pdf_data, 'doc': doc})
+    except Exception as e:
+        logger.error(f"Error creating Green Invoice for payment {payment_id}: {e}")
+        return jsonify({'error': 'green_invoice_error', 'message': str(e)}), 500
+
+
 @app.route('/api/courses/<int:course_id>/meetings', methods=['GET'])
 def get_course_meetings(course_id):
     meetings = CourseMeeting.query.filter_by(course_id=course_id).order_by(CourseMeeting.date.desc()).all()
@@ -925,6 +1204,21 @@ def save_attendance(meeting_id):
             attendance.present = att['present']
     db.session.commit()
     return jsonify({'message': 'Attendance saved'}), 200
+
+
+@app.route('/api/meetings/<int:meeting_id>', methods=['DELETE'])
+def delete_meeting(meeting_id):
+    try:
+        meeting = CourseMeeting.query.get_or_404(meeting_id)
+        # remove attendance entries first
+        Attendance.query.filter_by(meeting_id=meeting.id).delete()
+        db.session.delete(meeting)
+        db.session.commit()
+        return '', 204
+    except Exception as e:
+        logger.error(f"Error deleting meeting {meeting_id}: {e}")
+        db.session.rollback()
+        return jsonify({'error': f'Error deleting meeting: {str(e)}'}), 500
 
 
 @app.route('/api/calendar/monthly')
@@ -1261,7 +1555,15 @@ def export_payments_to_excel():
 if __name__ == '__main__':
     import sys
 
-    if '--populate-test-db' in sys.argv:
+    if '--reset-db' in sys.argv:
+        # Reset database completely
+        with app.app_context():
+            if reset_database():
+                logger.info("Database reset successfully!")
+            else:
+                logger.error("Failed to reset database!")
+        sys.exit(0)
+    elif '--populate-test-db' in sys.argv:
         # Use the test database
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/sport_courses_test.db'
         with app.app_context():
@@ -1476,3 +1778,15 @@ if __name__ == '__main__':
 
     if 'test' in sys.argv:
         unittest.main(argv=['first-arg-is-ignored'], exit=False)
+@app.before_first_request
+def ensure_schema_on_first_request():
+    """Make sure required tables (including coaches) exist even under gunicorn."""
+    try:
+        with app.app_context():
+            inspector = db.inspect(db.engine)
+            if 'coaches' not in inspector.get_table_names():
+                # Only create the coaches table if it's missing; avoid heavy migrations here
+                Coach.__table__.create(db.engine)
+                logger.info("Created 'coaches' table on first request")
+    except Exception as e:
+        logger.error(f"Failed to ensure coaches table exists: {e}")
