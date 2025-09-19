@@ -1778,15 +1778,23 @@ if __name__ == '__main__':
 
     if 'test' in sys.argv:
         unittest.main(argv=['first-arg-is-ignored'], exit=False)
-@app.before_first_request
+_schema_checked = False
+
+@app.before_request
 def ensure_schema_on_first_request():
-    """Make sure required tables (including coaches) exist even under gunicorn."""
+    """Ensure required tables exist; runs once per process.
+    Compatible with Flask versions that don't expose before_first_request.
+    """
+    global _schema_checked
+    if _schema_checked:
+        return
     try:
-        with app.app_context():
-            inspector = db.inspect(db.engine)
-            if 'coaches' not in inspector.get_table_names():
-                # Only create the coaches table if it's missing; avoid heavy migrations here
-                Coach.__table__.create(db.engine)
-                logger.info("Created 'coaches' table on first request")
+        inspector = db.inspect(db.engine)
+        if 'coaches' not in inspector.get_table_names():
+            # Only create the coaches table if it's missing; avoid heavy migrations here
+            Coach.__table__.create(db.engine)
+            logger.info("Created 'coaches' table")
     except Exception as e:
         logger.error(f"Failed to ensure coaches table exists: {e}")
+    finally:
+        _schema_checked = True
