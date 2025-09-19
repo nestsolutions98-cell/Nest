@@ -23,20 +23,13 @@ app = Flask(__name__, instance_relative_config=True)
 # Make sure the instance/ directory exists
 os.makedirs(app.instance_path, exist_ok=True)
 
-# Database configuration - keep local data separate from server data
-# Treat local run (dev server) as SQLite even if DATABASE_URL exists.
-IS_LOCAL_RUN = (
-    os.environ.get('FLASK_ENV') == 'development' or
-    not os.getenv('GUNICORN_CMD_ARGS') or                 # usually absent when running `python app.py`
-    os.getenv('RUN_LOCAL') == '1'                         # explicit override
-)
-
-if not IS_LOCAL_RUN and os.getenv('DATABASE_URL'):
-    # Remote/production: use Postgres (e.g., Railway) via DATABASE_URL
+# Database configuration - use PostgreSQL on Railway, SQLite locally
+if os.getenv('DATABASE_URL'):
+    # Railway PostgreSQL
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 else:
-    # Local development: use an isolated SQLite file
-    db_path = os.path.join(app.instance_path, 'sport_courses_local.db')
+    # Local SQLite
+    db_path = os.path.join(app.instance_path, 'sport_courses.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
@@ -66,6 +59,7 @@ def login_required(view_func):
 
     return wrapped
 
+
 # ---------------- Green Invoice config ----------------
 GI_API_BASE = os.getenv('GI_API_BASE', 'https://api.greeninvoice.co.il/api/v1')
 GI_CLIENT_ID = os.getenv('GI_CLIENT_ID')
@@ -75,6 +69,7 @@ try:
 except Exception:
     GI_DOC_TYPE = 400
 GI_SEND_EMAIL = (os.getenv('GI_SEND_EMAIL', 'false').lower() == 'true')
+
 
 def _gi_token():
     if not GI_CLIENT_ID or not GI_CLIENT_SECRET:
@@ -86,6 +81,7 @@ def _gi_token():
     if not token:
         raise RuntimeError('Failed to fetch Green Invoice token')
     return token
+
 
 def _gi_headers(token: str):
     return {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
@@ -137,6 +133,7 @@ class Coach(db.Model):
             'phone': self.phone,
             'full_name': f"{self.first_name} {self.last_name}".strip()
         }
+
 
 class Student(db.Model):
     __tablename__ = 'students'
@@ -247,11 +244,11 @@ def reset_database():
             # Drop all tables
             db.drop_all()
             logger.info("Dropped all existing tables")
-            
+
             # Create all tables with current schema
             db.create_all()
             logger.info("Created all tables with current schema")
-            
+
             return True
         except Exception as e:
             logger.error(f"Error resetting database: {e}")
@@ -263,23 +260,23 @@ def migrate_existing_data():
         # Check if we need to migrate existing tables
         inspector = db.inspect(db.engine)
         table_names = inspector.get_table_names()
-        
+
         # If no tables exist, create all tables
         if not table_names:
             db.create_all()
             logger.info("Database created successfully with correct schema!")
             return
-            
+
         # Check if courses table exists and has all required columns
         if 'courses' in table_names:
             course_columns = [col['name'] for col in inspector.get_columns('courses')]
             missing_columns = []
-            
+
             if 'duration' not in course_columns:
                 missing_columns.append('duration')
             if 'color' not in course_columns:
                 missing_columns.append('color')
-                
+
             # Add missing columns based on database type
             if missing_columns:
                 try:
@@ -289,15 +286,17 @@ def migrate_existing_data():
                             if col == 'duration':
                                 db.session.execute(text('ALTER TABLE courses ADD COLUMN duration INTEGER DEFAULT 60'))
                             elif col == 'color':
-                                db.session.execute(text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT "#3B82F6"'))
+                                db.session.execute(
+                                    text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT "#3B82F6"'))
                     else:
                         # PostgreSQL syntax
                         for col in missing_columns:
                             if col == 'duration':
                                 db.session.execute(text('ALTER TABLE courses ADD COLUMN duration INTEGER DEFAULT 60'))
                             elif col == 'color':
-                                db.session.execute(text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT \'#3B82F6\''))
-                    
+                                db.session.execute(
+                                    text('ALTER TABLE courses ADD COLUMN color VARCHAR(7) DEFAULT \'#3B82F6\''))
+
                     db.session.commit()
                     logger.info(f"Added missing columns to courses table: {missing_columns}")
                 except Exception as e:
@@ -309,12 +308,12 @@ def migrate_existing_data():
                         logger.info("Recreated courses table with correct schema")
                     except Exception as e2:
                         logger.error(f"Error recreating courses table: {e2}")
-        
+
         # Check payments table
         if 'payments' in table_names:
             payment_columns = [col['name'] for col in inspector.get_columns('payments')]
             missing_payment_columns = []
-            
+
             if 'course_id' not in payment_columns or 'amount' not in payment_columns:
                 # Drop and recreate the payments table
                 try:
@@ -334,7 +333,7 @@ def migrate_existing_data():
                     logger.info("Added payment_method column to existing payments table")
                 except Exception as e:
                     logger.error(f"Error adding payment_method column: {e}")
-        
+
         # Ensure all tables exist
         db.create_all()
 
@@ -404,7 +403,7 @@ def admin_reset_database():
     # Only allow in development or if user is admin
     if os.getenv('FLASK_ENV') != 'development' and not session.get('user'):
         return jsonify({'error': 'Unauthorized'}), 401
-    
+
     try:
         if reset_database():
             return jsonify({'message': 'Database reset successfully'}), 200
@@ -1130,13 +1129,15 @@ def create_green_invoice(payment_id: int):
 
         r = requests.post(f'{GI_API_BASE}/documents', headers=_gi_headers(token), json=payload, timeout=30)
         if not r.ok:
-            return jsonify({'error': 'green_invoice_create_failed', 'status': r.status_code, 'details': r.text}), r.status_code
+            return jsonify(
+                {'error': 'green_invoice_create_failed', 'status': r.status_code, 'details': r.text}), r.status_code
         doc = r.json() or {}
         doc_id = doc.get('id') or doc.get('_id')
 
         # Try issuing (some accounts require it)
         try:
-            requests.post(f'{GI_API_BASE}/documents/issue', headers=_gi_headers(token), json={'ids': [doc_id]}, timeout=20)
+            requests.post(f'{GI_API_BASE}/documents/issue', headers=_gi_headers(token), json={'ids': [doc_id]},
+                          timeout=20)
         except Exception:
             pass
 
@@ -1643,7 +1644,7 @@ if __name__ == '__main__':
             db.session.commit()
             logger.info('Test database populated with Arabic data and payments.')
         sys.exit(0)
-    
+
     # Initialize database
     with app.app_context():
         migrate_existing_data()
@@ -1786,6 +1787,7 @@ if __name__ == '__main__':
     if 'test' in sys.argv:
         unittest.main(argv=['first-arg-is-ignored'], exit=False)
 _schema_checked = False
+
 
 @app.before_request
 def ensure_schema_on_first_request():
