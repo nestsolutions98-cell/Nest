@@ -39,12 +39,12 @@ db = SQLAlchemy(app)
 CORS(app)
 
 # ---- Simple session-based auth configuration ----
-ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'waha')
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
 # Prefer a password hash via ADMIN_PASSWORD_HASH, else hash ADMIN_PASSWORD at startup
 from werkzeug.security import check_password_hash, generate_password_hash
 
 _pwd_hash_env = os.getenv('ADMIN_PASSWORD_HASH')
-_pwd_plain = os.getenv('ADMIN_PASSWORD', 'waha123')
+_pwd_plain = os.getenv('ADMIN_PASSWORD', 'admin123')
 ADMIN_PASSWORD_HASH = _pwd_hash_env or generate_password_hash(_pwd_plain)
 
 
