@@ -23,13 +23,20 @@ app = Flask(__name__, instance_relative_config=True)
 # Make sure the instance/ directory exists
 os.makedirs(app.instance_path, exist_ok=True)
 
-# Database configuration - use PostgreSQL on Railway, SQLite locally
-if os.getenv('DATABASE_URL'):
-    # Railway PostgreSQL
+# Database configuration - keep local data separate from server data
+# Treat local run (dev server) as SQLite even if DATABASE_URL exists.
+IS_LOCAL_RUN = (
+    os.environ.get('FLASK_ENV') == 'development' or
+    not os.getenv('GUNICORN_CMD_ARGS') or                 # usually absent when running `python app.py`
+    os.getenv('RUN_LOCAL') == '1'                         # explicit override
+)
+
+if not IS_LOCAL_RUN and os.getenv('DATABASE_URL'):
+    # Remote/production: use Postgres (e.g., Railway) via DATABASE_URL
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 else:
-    # Local SQLite
-    db_path = os.path.join(app.instance_path, 'sport_courses.db')
+    # Local development: use an isolated SQLite file
+    db_path = os.path.join(app.instance_path, 'sport_courses_local.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
