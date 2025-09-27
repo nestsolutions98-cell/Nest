@@ -387,22 +387,37 @@
     }
   };
 
-  window.unenrollStudent = async function (studentId, studentName) {
+  window.unenrollStudent = async function (buttonEl) {
+    const dataset = buttonEl?.dataset || {};
+    const enrollmentIdAttr = dataset.enrollmentId;
+    const studentIdAttr = dataset.studentId;
+    const studentName = dataset.studentName || '';
+
     if (!confirm(tfmt('Are you sure you want to unenroll {name} from this course?', { name: studentName }))) {
       return;
     }
 
-    try {
-      const resp = await fetch(`/api/courses/${courseId}/students`);
-      const enrolled = await resp.json();
-      const enrollment = enrolled.find((s) => s.id === studentId);
+    let enrollmentId = enrollmentIdAttr ? parseInt(enrollmentIdAttr, 10) : NaN;
 
-      if (!enrollment) {
-        alert(t('Student not found in this course.'));
-        return;
+    try {
+      if (!Number.isInteger(enrollmentId)) {
+        const resp = await fetch(`/api/courses/${courseId}/students`);
+        if (!resp.ok) {
+          throw new Error('Failed to load enrollments for fallback lookup');
+        }
+        const enrolled = await resp.json();
+        const target = enrolled.find((s) => s.enrollment_id && (
+          (studentIdAttr && String(s.id) === String(studentIdAttr)) ||
+          (`${s.first_name} ${s.fathers_name}`.trim() === studentName.trim())
+        ));
+        if (!target) {
+          alert(t('Student not found in this course.'));
+          return;
+        }
+        enrollmentId = target.enrollment_id;
       }
 
-      const del = await fetch(`/api/enrollments/${enrollment.enrollment_id}`, {
+      const del = await fetch(`/api/enrollments/${enrollmentId}`, {
         method: 'DELETE'
       });
 

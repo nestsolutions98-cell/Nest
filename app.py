@@ -529,7 +529,11 @@ def course_profile(course_id):
     course = Course.query.get_or_404(course_id)
     # Get enrolled students
     enrollments = Enrollment.query.filter_by(course_id=course_id).all()
-    students = [enrollment.student.to_dict() for enrollment in enrollments]
+    students = []
+    for enrollment in enrollments:
+        student_info = enrollment.student.to_dict()
+        student_info['enrollment_id'] = enrollment.id
+        students.append(student_info)
     # Get meetings (with attendance)
     meetings = CourseMeeting.query.filter_by(course_id=course_id).order_by(CourseMeeting.date.desc()).all()
     meetings_data = []

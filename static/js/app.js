@@ -532,11 +532,14 @@ function renderCalendar() {
     const weekStart = new Date(currentWeekStart);
     const daysToShow = calendarView === 'week' ? 7 : 1;
     
-    // Generate time slots for the full day (00:00 - 23:00)
+    // Generate time slots from 09:00 until midnight
     const timeSlots = [];
-    for (let hour = 0; hour < 24; hour++) {
+    const startHour = 9;
+    const endHour = 24;
+    for (let hour = startHour; hour < endHour; hour++) {
         timeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
     }
+    timeSlots.push('00:00');
     
     let html = `<div class="calendar-timeline-view" style="--days-to-show:${daysToShow};">`;
     
@@ -648,7 +651,12 @@ function renderCalendar() {
 function getEventsForDateAndTime(dateStr, timeSlot) {
     if (!window.calendarEvents) return [];
 
-    const slotMinutes = parseInt(timeSlot.split(':')[0]) * 60; // timeSlot like '13:00'
+    const [slotHour] = timeSlot.split(':');
+    let hourValue = parseInt(slotHour, 10);
+    if (timeSlot === '00:00' && hourValue === 0) {
+        hourValue = 24;
+    }
+    const slotMinutes = hourValue * 60; // timeSlot like '13:00'
     return window.calendarEvents
         .filter(event => event.date === dateStr)
         .filter(event => {

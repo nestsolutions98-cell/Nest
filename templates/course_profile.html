@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8" />
@@ -109,7 +109,10 @@
                             </div>
                             <button
                                 class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50"
-                                onclick="unenrollStudent({{ student.id }}, {{ (student.first_name + ' ' + student.fathers_name)|tojson }})"
+                                data-enrollment-id="{{ student.enrollment_id }}"
+                                data-student-id="{{ student.id }}"
+                                data-student-name="{{ (student.first_name + ' ' + student.fathers_name)|e }}"
+                                onclick="unenrollStudent(this)"
                                 title="Unenroll student"
                                 data-i18n-title="Unenroll student">
                                 <i class="fas fa-times"></i>
