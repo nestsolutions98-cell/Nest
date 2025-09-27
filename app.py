@@ -12,6 +12,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from io import BytesIO
 import requests
+import smtplib
+from email.message import EmailMessage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,6 +50,13 @@ _pwd_plain = os.getenv('ADMIN_PASSWORD', 'admin123')
 ADMIN_PASSWORD_HASH = _pwd_hash_env or generate_password_hash(_pwd_plain)
 
 
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+SMTP_USERNAME = os.getenv('SMTP_USERNAME')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
+LANDING_EMAIL_TO = os.getenv('LANDING_EMAIL_TO', 'nest.solutions98@gmail.com')
+
+
 def login_required(view_func):
     from functools import wraps
     @wraps(view_func)
@@ -58,6 +67,47 @@ def login_required(view_func):
         return view_func(*args, **kwargs)
 
     return wrapped
+
+
+def send_landing_lead_email(form_data: dict):
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        logger.error('SMTP credentials are not configured for landing form submissions.')
+        return False, 'خدمة البريد غير مهيأة حالياً. يرجى المحاولة لاحقاً.'
+
+    marketing_text = 'نعم' if form_data.get('marketing_opt_in') else 'لا'
+
+    msg = EmailMessage()
+    msg['Subject'] = f"طلب شراكة جديد من {form_data.get('full_name', 'زائر')}"
+    msg['From'] = SMTP_USERNAME
+    msg['To'] = LANDING_EMAIL_TO
+    if form_data.get('email'):
+        msg['Reply-To'] = form_data['email']
+
+    body = (
+        f"تفاصيل الطلب:
+"
+        f"الاسم الكامل: {form_data.get('full_name') or 'غير محدد'}
+"
+        f"البريد الإلكتروني: {form_data.get('email') or 'غير محدد'}
+"
+        f"مجال العمل/الاختصاص: {form_data.get('industry') or 'غير محدد'}
+"
+        f"رقم الهاتف: {form_data.get('phone') or 'غير محدد'}
+"
+        f"موافقة على الرسائل التسويقية: {marketing_text}
+"
+    )
+    msg.set_content(body)
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=30) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+        return True, None
+    except Exception:
+        logger.exception('Failed to send landing form email')
+        return False, 'تعذر إرسال الرسالة، يرجى المحاولة لاحقاً.'
 
 
 # ---------------- Green Invoice config ----------------
@@ -366,8 +416,49 @@ def compute_schedule_metrics(weekdays_str: str, sessions_count: int):
 
 # Routes
 @app.route('/')
-@login_required
 def home():
+    return render_template('landing.html', form_data=None)
+
+
+@app.route('/landing/submit', methods=['POST'])
+def landing_submit():
+    form_data = {
+        'full_name': request.form.get('full_name', '').strip(),
+        'email': request.form.get('email', '').strip(),
+        'industry': request.form.get('industry', '').strip(),
+        'phone': request.form.get('phone', '').strip(),
+        'marketing_opt_in': bool(request.form.get('marketing_opt_in'))
+    }
+
+    missing_fields = []
+    if not form_data['full_name']:
+        missing_fields.append('الاسم الكامل')
+    if not form_data['email']:
+        missing_fields.append('البريد الإلكتروني')
+
+    if missing_fields:
+        message = 'الرجاء تعبئة الحقول التالية: ' + '، '.join(missing_fields)
+        return render_template('landing.html', error_message=message, form_data=form_data), 400
+
+    success, error_message = send_landing_lead_email(form_data)
+
+    if success:
+        return render_template(
+            'landing.html',
+            success_message='شكرًا لإرسال التفاصيل! سنتواصل معكم قريبًا.',
+            form_data=None
+        ), 200
+
+    return render_template(
+        'landing.html',
+        error_message=error_message or 'تعذر إرسال الرسالة، يرجى المحاولة لاحقاً.',
+        form_data=form_data
+    ), 500
+
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
     return render_template('index.html')
 
 
@@ -377,7 +468,7 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        next_url = request.args.get('next') or request.form.get('next') or url_for('home')
+        next_url = request.args.get('next') or request.form.get('next') or url_for('dashboard')
 
         if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH, password):
             session['user'] = username
@@ -387,7 +478,7 @@ def login():
             return render_template('login.html', error='Invalid credentials', next_url=next_url), 401
 
     # GET
-    next_url = request.args.get('next', url_for('home'))
+    next_url = request.args.get('next', url_for('dashboard'))
     return render_template('login.html', next_url=next_url)
 
 

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شراكة رابحة | نست</title>
+  <style>
+    :root {
+      --bg-light: #f4f7fb;
+      --accent: #32d29b;
+      --accent-dark: #00b7a1;
+      --text-dark: #0f1a1c;
+      --muted: #5f6472;
+      --card-radius: 28px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Tahoma", sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(151, 255, 208, 0.35), transparent 55%),
+                  radial-gradient(circle at 90% 10%, rgba(142, 209, 255, 0.25), transparent 45%),
+                  var(--bg-light);
+      color: var(--text-dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 28px 6vw 0;
+    }
+
+    .login-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 28px;
+      border-radius: 999px;
+      font-weight: 700;
+      color: #0f2328;
+      text-decoration: none;
+      background: linear-gradient(135deg, #c0ffe0, var(--accent));
+      box-shadow: 0 12px 30px rgba(9, 56, 38, 0.18);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .login-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 36px rgba(9, 56, 38, 0.26);
+    }
+
+    main {
+      width: min(1000px, 92vw);
+      margin: 10px auto 60px;
+    }
+
+    .hero-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: clamp(20px, 3vw, 32px);
+      background: #050a13 url("{{ url_for('static', filename='images/black.png') }}") center/cover no-repeat;
+      color: #f9ffff;
+      border-radius: var(--card-radius);
+      padding: clamp(56px, 8vw, 96px) clamp(36px, 8vw, 96px);
+      overflow: hidden;
+      min-height: clamp(420px, 58vw, 520px);
+      box-shadow: 0 42px 78px rgba(5, 15, 32, 0.45);
+      isolation: isolate;
+    }
+
+    .hero-card::before,
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0.85;
+      mix-blend-mode: screen;
+      background: url("{{ url_for('static', filename='images/GradientCercile.png') }}") center/contain no-repeat;
+    }
+
+
+    .hero-hand {
+      position: absolute;
+      top: 58%;
+      left: 50%;
+      transform: translate(-48%, -60%) scale(0.8);
+      width: clamp(940px, 120vw, 1380px);
+      max-width: none;
+      height: auto;
+      object-fit: contain;
+      z-index: 2;
+      pointer-events: none;
+      filter: drop-shadow(0 42px 68px rgba(6, 14, 28, 0.6));
+    }
+
+    .hero-orb {
+      position: absolute;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .hero-orb--left {
+      left: clamp(-8%, -4vw, -60px);
+      bottom: clamp(-14%, -10vw, -120px);
+      width: clamp(180px, 25vw, 300px);
+    }
+
+    .hero-orb--right {
+      right: clamp(-6%, -2vw, 40px);
+      top: clamp(-6%, -3vw, 30px);
+      width: clamp(140px, 22vw, 220px);
+    }
+
+    .hero-orb--bottom {
+      right: clamp(12%, 20vw, 260px);
+      bottom: clamp(10%, 18vw, 210px);
+      width: clamp(100px, 15vw, 150px);
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 3;
+      top: -120px;
+      max-width: clamp(360px, 60vw, 560px);
+    }
+
+    .hero-copy h2 {
+      margin: 0;
+      font-size: clamp(18px, 2.5vw, 26px);
+      letter-spacing: 0.05em;
+      color: rgba(236, 255, 250, 0.9);
+    }
+
+    .hero-copy h1 {
+      margin: 14px 0 18px;
+      font-size: clamp(38px, 6.4vw, 58px);
+      color: #45f3b2;
+      line-height: 1.08;
+      text-shadow: 0 18px 46px rgba(69, 243, 178, 0.45);
+    }
+
+    .hero-paragraph {
+      position: relative;
+      z-index: 3;
+      top: 120px;
+      max-width: clamp(360px, 60vw, 560px);
+      margin: 0;
+      font-size: clamp(15px, 2.3vw, 17px);
+      line-height: 1.9;
+      color: rgba(224, 240, 255, 0.9);
+    }
+
+    .signup-card {
+      margin-top: clamp(32px, 6vw, 48px);
+      background: #fff;
+      border-radius: var(--card-radius);
+      padding: clamp(24px, 5vw, 40px);
+      box-shadow: 0 26px 55px rgba(15, 50, 68, 0.12);
+    }
+
+    .signup-card h3 {
+      margin: 0 0 18px;
+      font-size: clamp(24px, 3vw, 30px);
+      color: var(--text-dark);
+    }
+
+    .signup-card h3 span {
+      color: var(--accent);
+    }
+
+    .signup-card form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px 22px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="email"] {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      border: 1px solid #d8dde6;
+      background: #f8fbff;
+      font-size: 15px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus {
+      outline: none;
+      border-color: rgba(50, 210, 155, 0.65);
+      box-shadow: 0 0 0 4px rgba(50, 210, 155, 0.15);
+    }
+
+    .agreement {
+      grid-column: span 2;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: #3d4048;
+      line-height: 1.6;
+    }
+
+    .agreement input {
+      margin-top: 4px;
+      accent-color: var(--accent);
+    }
+
+    .submit-button {
+      grid-column: span 2;
+      padding: 14px;
+      border: none;
+      border-radius: 16px;
+      font-size: 18px;
+      font-weight: 800;
+      color: #0f2328;
+      background: linear-gradient(120deg, #c9ffb8, var(--accent));
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      box-shadow: 0 18px 34px rgba(50, 210, 155, 0.28);
+    }
+
+    .submit-button:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.03);
+    }
+
+    .alert {
+      margin: clamp(18px, 4vw, 28px) auto;
+      padding: clamp(12px, 2.4vw, 18px) clamp(16px, 3vw, 24px);
+      border-radius: 18px;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      max-width: clamp(320px, 70vw, 520px);
+      box-shadow: 0 18px 30px rgba(9, 40, 36, 0.18);
+    }
+
+    .alert-success {
+      background: rgba(50, 210, 155, 0.15);
+      color: #1c6b4a;
+      border: 1px solid rgba(50, 210, 155, 0.45);
+    }
+
+    .alert-error {
+      background: rgba(255, 94, 94, 0.12);
+      color: #7a1d1d;
+      border: 1px solid rgba(255, 94, 94, 0.28);
+    }
+
+
+    @media (max-width: 900px) {
+      .hero-card {
+        padding: clamp(40px, 10vw, 74px);
+        min-height: clamp(400px, 80vw, 520px);
+      }
+
+      .hero-hand {
+        top: 58%;
+        left: 50%;
+        transform: translate(-48%, -58%) scale(1);
+        width: clamp(760px, 140vw, 1100px);
+      }
+
+      .hero-orb--left {
+        left: -14%;
+        bottom: -18%;
+      }
+
+      .hero-orb--right {
+        right: -4%;
+        top: -6%;
+      }
+
+      .hero-orb--bottom {
+        right: 18%;
+        bottom: 14%;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .hero-card {
+        padding: clamp(32px, 12vw, 56px);
+        min-height: 0;
+      }
+
+      .hero-hand {
+        position: static;
+        transform: none;
+        width: min(560px, 100%);
+        margin-top: 18px;
+      }
+
+      .hero-orb {
+        display: none;
+      }
+
+      .hero-copy {
+        max-width: 100%;
+      }
+
+      .hero-copy h1 {
+        font-size: clamp(32px, 10vw, 40px);
+      }
+
+      .signup-card form {
+        grid-template-columns: 1fr;
+      }
+
+      .agreement,
+      .submit-button {
+        grid-column: span 1;
+      }
+
+      .top-bar {
+        padding-inline: 24px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <a class="login-button" href="{{ url_for('login', next=url_for('dashboard')) }}">تسجيل الدخول</a>
+  </div>
+  <main>
+    {% if success_message %}
+    <div class="alert alert-success">{{ success_message }}</div>
+    {% elif error_message %}
+    <div class="alert alert-error">{{ error_message }}</div>
+    {% endif %}
+    <section class="hero-card" aria-labelledby="hero-title">
+      <img src="{{ url_for('static', filename='images/Hand-Photo.png') }}" alt="مصافحة بين إنسان وذكاء اصطناعي" class="hero-hand">
+      <img src="{{ url_for('static', filename='images/GradientCercile.png') }}" alt="" aria-hidden="true" class="hero-orb hero-orb--left">
+      <img src="{{ url_for('static', filename='images/GradientCercile.png') }}" alt="" aria-hidden="true" class="hero-orb hero-orb--right">
+      <img src="{{ url_for('static', filename='images/GradientCercile.png') }}" alt="" aria-hidden="true" class="hero-orb hero-orb--bottom">
+      <div class="hero-copy">
+        <h2>الشراكة مع التكنولوجيا</h2>
+        <h1 id="hero-title">شراكة رابحة</h1>
+      </div>
+      <p class="hero-paragraph">
+          انضمامكم إلى "نست" هو قرار يرفع عملكم إلى موقع الريادة. حلولنا الرقمية مصممة لتطوير المصالح
+          التجارية، تعزيز الكفاءة، ورفع المستوى المهني. مع التكنولوجيا، نفتح أمامكم أبواب النجاح والتقدم.
+      </p>
+    </section>
+
+
+    <section class="signup-card">
+      <h3><span>سجلوا الآن،</span> عشان تكونوا جزء من هاي الشراكة</h3>
+      <form method="post" action="{{ url_for('landing_submit') }}">
+        <div class="form-field">
+          <label for="full-name">الاسم الكامل:</label>
+          <input id="full-name" name="full_name" type="text" placeholder="اكتبوا اسمكم هنا" value="{{ form_data.get('full_name', '') if form_data else '' }}" required>
+        </div>
+        <div class="form-field">
+          <label for="email">البريد الإلكتروني:</label>
+          <input id="email" name="email" type="email" placeholder="example@email.com" value="{{ form_data.get('email', '') if form_data else '' }}" required>
+        </div>
+        <div class="form-field">
+          <label for="industry">مجال العمل/الاختصاص:</label>
+          <input id="industry" name="industry" type="text" placeholder="مجال عملكم" value="{{ form_data.get('industry', '') if form_data else '' }}">
+        </div>
+        <div class="form-field">
+          <label for="phone">رقم الهاتف:</label>
+          <input id="phone" name="phone" type="text" placeholder="05x-xxx-xxxx" value="{{ form_data.get('phone', '') if form_data else '' }}">
+        </div>
+        <label class="agreement">
+          <input type="checkbox" name="marketing_opt_in" value="yes" {{ 'checked' if form_data and form_data.get('marketing_opt_in') else '' }}>
+          أوافق على استلام رسائل تسويقية وإعلانية عبر البريد الإلكتروني أو رسائل الهاتف.
+        </label>
+        <button type="submit" class="submit-button">أرسل التفاصيل &gt;&gt;</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
