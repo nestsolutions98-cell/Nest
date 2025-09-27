@@ -84,18 +84,12 @@ def send_landing_lead_email(form_data: dict):
         msg['Reply-To'] = form_data['email']
 
     body = (
-        f"تفاصيل الطلب:
-"
-        f"الاسم الكامل: {form_data.get('full_name') or 'غير محدد'}
-"
-        f"البريد الإلكتروني: {form_data.get('email') or 'غير محدد'}
-"
-        f"مجال العمل/الاختصاص: {form_data.get('industry') or 'غير محدد'}
-"
-        f"رقم الهاتف: {form_data.get('phone') or 'غير محدد'}
-"
-        f"موافقة على الرسائل التسويقية: {marketing_text}
-"
+        f"تفاصيل الطلب:"
+        f"الاسم الكامل: {form_data.get('full_name') or 'غير محدد'}"
+        f"البريد الإلكتروني: {form_data.get('email') or 'غير محدد'}"
+        f"مجال العمل/الاختصاص: {form_data.get('industry') or 'غير محدد'}"
+        f"رقم الهاتف: {form_data.get('phone') or 'غير محدد'}"
+        f"موافقة على الرسائل التسويقية: {marketing_text}"
     )
     msg.set_content(body)
 
