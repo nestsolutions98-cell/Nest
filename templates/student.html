@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,7 @@
     <nav class="bg-white shadow-sm border-b mb-8">
         <div class="w-full max-w-4xl mx-auto px-4">
             <div class="flex justify-between h-16 items-center">
-                <a href="/" class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center">
+                <a href="{{ url_for('dashboard') }}" class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center">
                     <i class="fas fa-dumbbell text-blue-600 mr-2"></i>
                     Sports Club Management
                 </a>
@@ -20,7 +20,7 @@
         </div>
     </nav>
     <div class="w-full max-w-4xl mx-auto px-4">
-        <a href="/" class="inline-flex items-center btn btn-secondary bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded">
+        <a href="{{ url_for('dashboard') }}" class="inline-flex items-center btn btn-secondary bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded">
             <i class="fas fa-arrow-left mr-2"></i>Back
         </a>
     </div>
@@ -90,7 +90,7 @@
                                 {% for payment in payments %}
                                     <div class="flex justify-between items-center bg-white border rounded px-3 py-1">
                                         <span class="text-gray-800">{{ payment.month }}</span>
-                                        <span class="text-green-700 font-semibold">₪{{ '%.2f'|format(payment.amount) }}</span>
+                                        <span class="text-green-700 font-semibold">â‚ª{{ '%.2f'|format(payment.amount) }}</span>
                                         <span class="text-xs text-gray-500">({{ payment.payment_date }})</span>
                                     </div>
                                 {% endfor %}

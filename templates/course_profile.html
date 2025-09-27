@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8" />
@@ -16,7 +16,7 @@
     <nav class="bg-white shadow-sm border-b mb-8">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
-                <a href="/" class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center">
+                <a href="{{ url_for('dashboard') }}" class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center">
                     <i class="fas fa-dumbbell text-blue-600 mr-2"></i>
                     <span class="keep-en notranslate">Sports Club Management</span>
                 </a>
@@ -24,8 +24,8 @@
                 <div class="flex items-center gap-2">
                     <button id="langToggleBtn"
                             class="ml-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm"
-                            type="button">עברית</button>
-                    <a href="/"
+                            type="button">×¢×‘×¨×™×ª</button>
+                    <a href="{{ url_for('dashboard') }}"
                        class="ml-2 btn btn-secondary bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded flex items-center">
                         <i class="fas fa-arrow-left mr-2"></i>
                         <span data-i18n="Back">Back</span>
@@ -167,7 +167,7 @@
                                     {{ meeting.attendance|selectattr('present')|list|length }}/{{ meeting.attendance|length }}
                                     <span data-i18n="attended">attended</span>
                                 </span>
-                                <span class="mx-2">•</span>
+                                <span class="mx-2">â€¢</span>
                                 <span>{{ meeting.attendance|length }}</span>
                                 <span data-i18n="total students">total students</span>
                             </div>

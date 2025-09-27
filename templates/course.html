@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -14,13 +14,13 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-wrap justify-between h-auto min-h-16 gap-y-2">
                 <div class="flex items-center max-w-full overflow-hidden">
-                    <a href="/" class="text-xl font-bold text-gray-900 hover:text-blue-600">
+                    <a href="{{ url_for('dashboard') }}" class="text-xl font-bold text-gray-900 hover:text-blue-600">
                         <i class="fas fa-dumbbell text-blue-600 mr-2"></i>
                         Sports Club Management
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="/" class="btn btn-primary">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
                         <i class="fas fa-arrow-left mr-2"></i>Back to Calendar
                     </a>
                 </div>

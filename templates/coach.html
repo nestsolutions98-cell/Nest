@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,7 @@
     <nav class="bg-white shadow-sm border-b mb-8">
         <div class="w-full max-w-4xl mx-auto px-4">
             <div class="flex justify-between h-16 items-center">
-                <a href="/" class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center">
+                <a href="{{ url_for('dashboard') }}" class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center">
                     <i class="fas fa-dumbbell text-blue-600 mr-2"></i>
                     Sports Club Management
                 </a>
@@ -21,7 +21,7 @@
     </nav>
 
     <div class="w-full max-w-4xl mx-auto px-4">
-        <a href="/" class="inline-flex items-center btn btn-secondary bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded">
+        <a href="{{ url_for('dashboard') }}" class="inline-flex items-center btn btn-secondary bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded">
             <i class="fas fa-arrow-left mr-2"></i><span data-i18n="Back">Back</span>
         </a>
     </div>
@@ -101,17 +101,17 @@
             'No courses for coach':'No courses found for this coach.'
           },
           he: {
-            'Back':'חזרה',
-            'Coach Profile':'פרופיל מאמן',
-            'First Name':'שם פרטי',
-            'Last Name':'שם משפחה',
-            'Phone':'טלפון',
-            'Courses':'קורסים',
-            'View Profile':'צפה בפרטים',
-            'Start':'תחילה',
-            'End':'סיום',
-            'Sessions':'מפגשים',
-            'No courses for coach':'לא נמצאו קורסים למאמן זה'
+            'Back':'×—×–×¨×”',
+            'Coach Profile':'×¤×¨×•×¤×™×œ ×ž××ž×Ÿ',
+            'First Name':'×©× ×¤×¨×˜×™',
+            'Last Name':'×©× ×ž×©×¤×—×”',
+            'Phone':'×˜×œ×¤×•×Ÿ',
+            'Courses':'×§×•×¨×¡×™×',
+            'View Profile':'×¦×¤×” ×‘×¤×¨×˜×™×',
+            'Start':'×ª×—×™×œ×”',
+            'End':'×¡×™×•×',
+            'Sessions':'×ž×¤×’×©×™×',
+            'No courses for coach':'×œ× × ×ž×¦××• ×§×•×¨×¡×™× ×œ×ž××ž×Ÿ ×–×”'
           }
         };
         const lang = localStorage.getItem('lang') || 'en';
