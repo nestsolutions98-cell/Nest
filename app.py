@@ -12,8 +12,6 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from io import BytesIO
 import requests
-import smtplib
-from email.message import EmailMessage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -50,10 +48,9 @@ _pwd_plain = os.getenv('ADMIN_PASSWORD', 'admin123')
 ADMIN_PASSWORD_HASH = _pwd_hash_env or generate_password_hash(_pwd_plain)
 
 
-SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
-SMTP_USERNAME = os.getenv('SMTP_USERNAME')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
+SENDGRID_FROM_EMAIL = os.getenv('SENDGRID_FROM_EMAIL')
+SENDGRID_FROM_NAME = os.getenv('SENDGRID_FROM_NAME', 'Nest Solutions')
 LANDING_EMAIL_TO = os.getenv('LANDING_EMAIL_TO', 'nest.solutions98@gmail.com')
 
 
@@ -70,20 +67,13 @@ def login_required(view_func):
 
 
 def send_landing_lead_email(form_data: dict):
-    if not SMTP_USERNAME or not SMTP_PASSWORD:
-        logger.error('SMTP credentials are not configured for landing form submissions.')
+    if not SENDGRID_API_KEY or not SENDGRID_FROM_EMAIL:
+        logger.error('SendGrid credentials are not configured for landing form submissions.')
         return False, 'خدمة البريد غير مهيأة حالياً. يرجى المحاولة لاحقاً.'
 
     marketing_text = 'نعم' if form_data.get('marketing_opt_in') else 'لا'
 
-    msg = EmailMessage()
-    msg['Subject'] = f"طلب شراكة جديد من {form_data.get('full_name', 'زائر')}"
-    msg['From'] = SMTP_USERNAME
-    msg['To'] = LANDING_EMAIL_TO
-    if form_data.get('email'):
-        msg['Reply-To'] = form_data['email']
-
-    body = (
+    body_text = (
         f"تفاصيل الطلب:"
         f"الاسم الكامل: {form_data.get('full_name') or 'غير محدد'}"
         f"البريد الإلكتروني: {form_data.get('email') or 'غير محدد'}"
@@ -91,17 +81,49 @@ def send_landing_lead_email(form_data: dict):
         f"رقم الهاتف: {form_data.get('phone') or 'غير محدد'}"
         f"موافقة على الرسائل التسويقية: {marketing_text}"
     )
-    msg.set_content(body)
+
+    payload = {
+        'personalizations': [
+            {
+                'to': [{'email': LANDING_EMAIL_TO}],
+                'subject': f"طلب شراكة جديد من {form_data.get('full_name', 'زائر')}"
+            }
+        ],
+        'from': {
+            'email': SENDGRID_FROM_EMAIL,
+            'name': SENDGRID_FROM_NAME
+        },
+        'reply_to': {
+            'email': form_data.get('email') or SENDGRID_FROM_EMAIL,
+            'name': form_data.get('full_name') or SENDGRID_FROM_NAME
+        },
+        'content': [
+            {
+                'type': 'text/plain',
+                'value': body_text
+            }
+        ]
+    }
 
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=30) as server:
-            server.starttls()
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.send_message(msg)
-        return True, None
-    except Exception:
-        logger.exception('Failed to send landing form email')
+        response = requests.post(
+            'https://api.sendgrid.com/v3/mail/send',
+            headers={
+                'Authorization': f'Bearer {SENDGRID_API_KEY}',
+                'Content-Type': 'application/json'
+            },
+            json=payload,
+            timeout=30
+        )
+        if 200 <= response.status_code < 300:
+            return True, None
+        logger.error('SendGrid API error %s: %s', response.status_code, response.text)
         return False, 'تعذر إرسال الرسالة، يرجى المحاولة لاحقاً.'
+    except Exception:
+        logger.exception('Failed to send landing form email via SendGrid')
+        return False, 'تعذر إرسال الرسالة، يرجى المحاولة لاحقاً.'
+
+
 
 
 # ---------------- Green Invoice config ----------------
